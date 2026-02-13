@@ -98,7 +98,7 @@ def Halos(_dir, z=0.5, silent=True):
 
     # look up cosmology 
     setup = _dir.split('/')[-2]
-    ireal = _dir.split('/')[-1]
+    ireal = int(_dir.split('/')[-1])
 
     Om, Ob, h, ns, s8 = _cosmo_lookup(setup, ireal)
 
@@ -391,3 +391,23 @@ def _fname_format(snapshot):
         raise Exception('File (%s) not found!' % snapshot)
     return filename,fformat
 
+def Box_RSD(cat, LOS=[0,0,1], Lbox=1000.):
+    ''' Given a halo/galaxy catalog in a periodic box, apply redshift space
+    distortion specified LOS along LOS
+
+    Parameters
+    ----------
+    cat : CatalogBase
+        nbodykit.Catalog object
+    LOS : array_like
+        3 element list specifying the direction of the line-of-sight
+    Lbox : float
+        box size in Mpc/h
+    '''
+    pos = np.array(cat['Position']) + np.array(cat['VelocityOffset']) * LOS
+
+    # impose periodic boundary conditions for particles outside the box
+    i_rsd = np.arange(3)[np.array(LOS).astype(bool)][0]
+    rsd_pos = pos[:,i_rsd] % Lbox
+    pos[:,i_rsd] = np.array(rsd_pos)
+    return pos

@@ -74,8 +74,8 @@ def CSbox_galaxy(theta_gal, theta_rsd, dm_dir, Ngrid=256, Lbox=1000.,
     twebdelta_filename  = Fname('TwebDelta_')
 
     vx_filename = dm_dir + 'VExEULz%3.3f.dat' % zsnap
-    vy_filename = dm_dir + 'VExEULz%3.3f.dat' % zsnap
-    vz_filename = dm_dir + 'VExEULz%3.3f.dat' % zsnap
+    vy_filename = dm_dir + 'VEyEULz%3.3f.dat' % zsnap
+    vz_filename = dm_dir + 'VEzEULz%3.3f.dat' % zsnap
 
     posx_filename = Fname('BOXposx')
     posy_filename =	Fname('BOXposy')
@@ -326,7 +326,7 @@ def _write_cosmology_par_input_file(omega_m, omega_b, w0, n_s, wa, sigma8, hpar,
     ff.write('wpar    = %s\n' %str(w0))
     ff.write('n_s     = %s\n' %str(n_s))
     ff.write('wprime  = %s\n' %str(wa))
-    ff.write('sigma8  = %s\n' %str(omega_m))
+    ff.write('sigma8  = %s\n' %str(sigma8))
     ff.write('rsmooth = 8.0\n')
     ff.write('hpar    = %s\n' %str(hpar))
     ff.write('betapar = 1.5\n')
