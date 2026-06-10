@@ -219,3 +219,4 @@ qphi*/
 quij.hod*
 *.bak
 *.bakbak
+bin/npe/*.hdf5
