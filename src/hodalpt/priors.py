@@ -19,7 +19,7 @@ def sample_bias(seed, model='nonlocal2'):
     returns
     -------
     dict with alpha, beta, nmean, and rsd parameters
-    function to write pm 50 percent ALPT nlb priors centered on quijote fiducial best fit.
+    function to write pm 10x ALPT nlb priors centered on quijote fiducial best fit.
     alpha, beta, nmean are arrays of cenral best fit values (16,), width is desired prior width (percentile)
     returns dictionaries for alpha, beta, nmean 
     '''
