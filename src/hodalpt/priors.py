@@ -89,9 +89,9 @@ def sample_HOD(seed):
         'logM1': rng.normal(13.68, 0.31),
         'alpha': max(rng.normal(0.79, 0.26), 1e-3),
         'Abias': rng.normal(0.01, 0.16),
-        'eta_conc': rng.normal(1.11,0.40),
-        'eta_cen':rng.normal(0.31, 0.13),
-        'eta_sat': rng.normal(0.85, 0.27) 
+        'eta_conc': max(rng.normal(1.11,0.40), 1e-3),
+        'eta_cen': max(rng.normal(0.31, 0.13), 1e-3),
+        'eta_sat': max(rng.normal(0.85, 0.27), 1e-3)
         }
     return hod
 
