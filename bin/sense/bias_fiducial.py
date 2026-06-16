@@ -7,8 +7,8 @@ from hodalpt.sims import alpt as CS
 from hodalpt.sims import quijote as Q
 from nbodykit.lab import ArrayCatalog, FFTPower
 import time
-# import pyfftw
-# pyfftw.config.NUM_THREADS = 1
+import pyfftw
+pyfftw.config.NUM_THREADS = 1
 
 from hodalpt import stats
 
