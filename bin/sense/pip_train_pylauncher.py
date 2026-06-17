@@ -133,6 +133,10 @@ def run_pip_train_pylauncher(i0, i1, nodes=8, time=4, queue='normal',
         'conda activate simbig',
         'module load pylauncher',
         '',
+        'export OMP_NUM_THREADS=1',
+        'export MKL_NUM_THREADS=1',
+        'export OPENBLAS_NUM_THREADS=1',
+        '',
         'python %s launch %s %s' % (os.path.abspath(__file__), cmdfile, pyl_workdir),
         '',
     ])
@@ -182,6 +186,10 @@ def resume_pip_train_pylauncher(i0, i1, nodes=8, time=2, queue='normal'):
         'conda activate simbig',
         'module load pylauncher',
         '',
+        'export OMP_NUM_THREADS=1',
+        'export MKL_NUM_THREADS=1',
+        'export OPENBLAS_NUM_THREADS=1',
+        '',
         'python %s resume-run %s' % (os.path.abspath(__file__), queuestate),
         '',
     ])
@@ -205,12 +213,12 @@ if __name__ == '__main__':
         import pylauncher
         cmdfile     = sys.argv[2]
         pyl_workdir = sys.argv[3]
-        pylauncher.ClassicLauncher(cmdfile, workdir=pyl_workdir, debug='job', delay=0.01, cores=9)
+        pylauncher.ClassicLauncher(cmdfile, workdir=pyl_workdir, debug='job', delay=0.01, cores=32)
 
     elif subcmd == 'resume-run':
         import pylauncher
         queuestate = sys.argv[2]
-        pylauncher.ResumeClassicLauncher(queuestate, debug='job', delay=0.01, cores=9)
+        pylauncher.ResumeClassicLauncher(queuestate, debug='job', delay=0.01, cores=32)
 
     elif subcmd == 'resume':
         import argparse
