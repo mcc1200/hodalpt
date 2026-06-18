@@ -109,7 +109,7 @@ def run_pip_train_pylauncher(i0, i1, nodes=8, time=4, queue='normal',
                     % (scriptdir, i, i + 1, logfile))
     print('wrote %i commandlines to %s' % (len(indices), cmdfile))
 
-    pyl_workdir = os.path.join(scratch, 'pylauncher_pip_train_%i_%i' % (i0, i1))
+    pyl_workdir_base = os.path.join(scratch, 'pylauncher_pip_train_%i_%i' % (i0, i1))
 
     slurm = '\n'.join([
         '#!/bin/bash',
@@ -137,7 +137,7 @@ def run_pip_train_pylauncher(i0, i1, nodes=8, time=4, queue='normal',
         'export MKL_NUM_THREADS=1',
         'export OPENBLAS_NUM_THREADS=1',
         '',
-        'python %s launch %s %s' % (os.path.abspath(__file__), cmdfile, pyl_workdir),
+        'python %s launch %s %s_${SLURM_JOB_ID}' % (os.path.abspath(__file__), cmdfile, pyl_workdir_base),
         '',
     ])
 
@@ -149,7 +149,7 @@ def run_pip_train_pylauncher(i0, i1, nodes=8, time=4, queue='normal',
     return None
 
 
-def resume_pip_train_pylauncher(i0, i1, nodes=8, time=2, queue='normal'):
+def resume_pip_train_pylauncher(i0, i1, jobid, nodes=8, time=2, queue='normal'):
     '''Resume an interrupted pylauncher pip_train job.'''
     workdir = os.environ.get('WORK', os.getcwd())
     scratch = os.environ.get('SCRATCH', workdir)
@@ -157,7 +157,7 @@ def resume_pip_train_pylauncher(i0, i1, nodes=8, time=2, queue='normal'):
     hr = int(np.floor(time))
     mn = int((time * 60) % 60)
 
-    pyl_workdir = os.path.join(scratch, 'pylauncher_pip_train_%i_%i' % (i0, i1))
+    pyl_workdir = os.path.join(scratch, 'pylauncher_pip_train_%i_%i_%s' % (i0, i1, jobid))
     queuestate  = os.path.join(pyl_workdir, 'queuestate')
 
     if not os.path.exists(queuestate):
@@ -226,12 +226,13 @@ if __name__ == '__main__':
         p.add_argument('subcmd')
         p.add_argument('i0', type=int)
         p.add_argument('i1', type=int)
+        p.add_argument('--jobid', type=str,   required=True)
         p.add_argument('--nodes', type=int,   default=8)
         p.add_argument('--time',  type=float, default=2.0)
         p.add_argument('--queue', type=str,   default='normal')
         args = p.parse_args()
         resume_pip_train_pylauncher(
-            args.i0, args.i1, nodes=args.nodes, time=args.time, queue=args.queue)
+            args.i0, args.i1, args.jobid, nodes=args.nodes, time=args.time, queue=args.queue)
 
     else:
         import argparse
