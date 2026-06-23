@@ -42,6 +42,7 @@ def _load_bias_fid(args):
         k     = f['k'][:]
         p0    = f['p0'][:]
         p2    = f['p2'][:]
+        ngs   = f['ngs']
         theta = f['theta'][:]
         mask  = k <= kmax
         if 'b123' in f:
@@ -55,7 +56,7 @@ def _load_bias_fid(args):
             q123 = f['q123'][:][klim]
         else:
             b123, q123 = None, None
-    return k[mask], p0[mask], p2[mask], theta, b123, q123, klim, i_k1, i_k2, i_k3
+    return k[mask], p0[mask], p2[mask], theta, b123, q123, klim, i_k1, i_k2, i_k3, ngs
 
 
 def collect_bias_fid(bias_dir, out_fn, label):
@@ -83,7 +84,7 @@ def collect_bias_fid(bias_dir, out_fn, label):
     all_p0    = np.array([r[1] for r in results])
     all_p2    = np.array([r[2] for r in results])
     all_theta = np.array([r[3] for r in results])
-
+    ngs       = np.array([r[10] for r in results])
     n_with_bispec = sum(1 for r in results if r[4] is not None)
     print(f'[{label}] {n_with_bispec}/{n} samples have bispectrum')
 
@@ -92,13 +93,14 @@ def collect_bias_fid(bias_dir, out_fn, label):
         f.create_dataset('p0',    data=all_p0)
         f.create_dataset('p2',    data=all_p2)
         f.create_dataset('k',     data=k)
+        f.create_dataset('ngs',   data=ngs)
         if n_with_bispec == n:
             f.create_dataset('b123', data=np.array([r[4] for r in results]))
             f.create_dataset('q123', data=np.array([r[5] for r in results]))
             f.create_dataset('klim', data=np.array([r[6] for r in results]))
             f.create_dataset('i_k1', data=np.array([r[7] for r in results]))
             f.create_dataset('i_k2', data=np.array([r[8] for r in results]))
-            f.create_dataset('i_k3', data=np.array([r[7] for r in results]))
+            f.create_dataset('i_k3', data=np.array([r[9] for r in results]))
 
     print(f'[{label}] Wrote {out_fn}: theta {all_theta.shape}, p0 {all_p0.shape}')
 
