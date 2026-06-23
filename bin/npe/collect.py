@@ -42,7 +42,7 @@ def _load_bias_fid(args):
         k     = f['k'][:]
         p0    = f['p0'][:]
         p2    = f['p2'][:]
-        ngs   = f['ngs']
+        ngs   = f['ngs'][:]
         theta = f['theta'][:]
         mask  = k <= kmax
         if 'b123' in f:
