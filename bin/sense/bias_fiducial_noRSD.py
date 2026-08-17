@@ -107,8 +107,8 @@ for i in range(i0, i1):
         fname_HOD = outdir_HOD+'/spec.noRSD.%i.h5' % i
         hod = priors.sample_HOD(seed=i)
         gals =  Q.HODgalaxies(hod, path_quij, z=0.5)
-        # xyz_hod = Q.Box_RSD(gals, LOS=[0,0,1], Lbox=1000.)
-        save_spectrum(fname_HOD, gals, hod_to_vec(hod))
+        xyz_hod = np.array(gals['Position'])
+        save_spectrum(fname_HOD, xyz_hod, hod_to_vec(hod))
 
     dt = time.time() - t_i
     print('[%i/%i] sample %i done in %.1f s (total %.1f min)' % (
