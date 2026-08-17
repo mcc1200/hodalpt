@@ -97,14 +97,14 @@ for i in range(i0, i1):
     t_i = time.time()
     print('[%i/%i] computing sample %i' % (i - i0 + 1, i1 - i0, i), flush=True)
 
-    fname_NLB = outdir_NLB+'/spec.%i.h5' % i
+    fname_NLB = outdir_NLB+'/spec.noRSD.%i.h5' % i
     seed = i
     theta_gal = priors.sample_bias_realspace(seed=seed, model='nonlocal2')
     xyz_nlb = CS.CSbox_galaxy(theta_gal, None, dm_dir, bias_model='nonlocal2', subgrid=True, silent=True, rsd=False)
     save_spectrum(fname_NLB, xyz_nlb, nlb_to_vec(theta_gal))
 
     if i < n_hod:
-        fname_HOD = outdir_HOD+'/spec.%i.h5' % i
+        fname_HOD = outdir_HOD+'/spec.noRSD.%i.h5' % i
         hod = priors.sample_HOD(seed=i)
         gals =  Q.HODgalaxies(hod, path_quij, z=0.5)
         # xyz_hod = Q.Box_RSD(gals, LOS=[0,0,1], Lbox=1000.)
@@ -122,7 +122,7 @@ if do_plot:
     fig, (ax_pk, ax_bk) = plt.subplots(1, 2, figsize=(12, 5))
 
     for i in range(i0, i1):
-        with h5py.File(outdir_NLB + '/spec.%i.h5' % i, 'r') as f:
+        with h5py.File(outdir_NLB + '/spec.noRSD.%i.h5' % i, 'r') as f:
             k_nlb    = f['k'][:]
             p0_nlb   = f['p0'][:]
             b123_nlb = f['b123'][:]
@@ -130,7 +130,7 @@ if do_plot:
         ax_bk.plot(range(len(b123_nlb)), b123_nlb, c='C0', lw=1, label='NLB' if i == i0 else None)
 
         if i < n_hod:
-            with h5py.File(outdir_HOD + '/spec.%i.h5' % i, 'r') as f:
+            with h5py.File(outdir_HOD + '/spec.noRSD.%i.h5' % i, 'r') as f:
                 k_hod    = f['k'][:]
                 p0_hod   = f['p0'][:]
                 b123_hod = f['b123'][:]
