@@ -58,7 +58,7 @@ _CONSTRAINED_ACTIVE_IDX = np.array([
 ], dtype=int)
 
 _NLB_FID_PATH = os.path.normpath(os.path.join(
-    os.path.dirname(__file__), '..', '..', 'bin', 'npe', 'data',
+    os.path.dirname(__file__), '..', '..', 'bin', 'sense',
     'cmassfid_closest_NLBpars.txt'))
 
 
