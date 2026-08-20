@@ -2,9 +2,16 @@
 Collect training datasets for NPE.
 
 Usage:
-    python collect.py [bias_fid_hod] [bias_fid_nlb] [bias_lhc_hod] [bias_sobol_alpt]
+    python collect.py [bias_fid_hod] [bias_fid_nlb] [bias_fid_hod_norsd] \\
+                       [bias_fid_nlb_norsd] [bias_lhc_hod] [bias_sobol_alpt]
 
-With no arguments, all four datasets are collected.
+With no arguments, all six datasets are collected.
+
+bias_fid_*_norsd reads the real-space (rsd=False) spec.noRSD.i.h5 runs from
+bias_fiducial_noRSD.py (spectra live alongside the RSD spec.i.h5 files in
+the same NLB_bias_dir/HOD_bias_dir, but are collected separately and written
+to bias_fid_*_noRSD_data.hdf5 so as not to overwrite the RSD datasets). They
+have no 'p2' -- no quadrupole in real space.
 '''
 import argparse
 import h5py
@@ -101,6 +108,81 @@ def collect_bias_fid(bias_dir, out_fn, label):
             f.create_dataset('i_k1', data=np.array([r[7] for r in results]))
             f.create_dataset('i_k2', data=np.array([r[8] for r in results]))
             f.create_dataset('i_k3', data=np.array([r[9] for r in results]))
+
+    print(f'[{label}] Wrote {out_fn}: theta {all_theta.shape}, p0 {all_p0.shape}')
+
+
+# ---------------------------------------------------------------------------
+# bias_fid_HOD_noRSD  /  bias_fid_NLB_noRSD
+#
+# real-space (rsd=False) runs from bias_fiducial_noRSD.py -- filenames are
+# spec.noRSD.i.h5 (not spec.i.h5) so they coexist with the RSD spectra in
+# the same NLB_bias_dir/HOD_bias_dir, and save_spectrum() there never writes
+# 'p2' (no quadrupole in real space), so it's dropped here rather than read.
+# ---------------------------------------------------------------------------
+
+def _load_bias_fid_norsd(args):
+    fn, kmax, kmin_b = args
+    with h5py.File(fn, 'r') as f:
+        k     = f['k'][:]
+        p0    = f['p0'][:]
+        ngs   = f['ngs'][()]
+        theta = f['theta'][:]
+        mask  = k <= kmax
+        if 'b123' in f:
+            i_k1 = f['i_k1'][:] #* k_fund
+            i_k2 = f['i_k2'][:] #* k_fund
+            i_k3 = f['i_k3'][:] #* k_fund
+            k1, k2, k3 = i_k1 * k_fund, i_k2 * k_fund, i_k3 * k_fund
+            klim = (k1 > kmin_b) & (k2 > kmin_b) & (k3 > kmin_b) & \
+                   (k1 <= kmax)  & (k2 <= kmax)  & (k3 <= kmax)
+            b123 = f['b123'][:][klim]
+            q123 = f['q123'][:][klim]
+        else:
+            b123, q123 = None, None
+    return k[mask], p0[mask], theta, b123, q123, klim, i_k1, i_k2, i_k3, ngs
+
+
+def collect_bias_fid_norsd(bias_dir, out_fn, label):
+    available = sorted(
+        [fn for fn in os.listdir(bias_dir) if fn.startswith('spec.noRSD.') and fn.endswith('.h5')],
+        key=lambda fn: int(fn.split('.')[2])
+    )
+    n = len(available)
+    print(f'[{label}] Found {n} spectra in {bias_dir}')
+
+    paths = [(os.path.join(bias_dir, fn), kmax, kmin_bispec) for fn in available]
+    results = [None] * n
+    t0 = time.time()
+
+    with ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
+        futures = {pool.submit(_load_bias_fid_norsd, args): i for i, args in enumerate(paths)}
+        done = 0
+        for fut in as_completed(futures):
+            results[futures[fut]] = fut.result()
+            done += 1
+            if done % 500 == 0 or done == n:
+                print(f'  {done}/{n}  ({time.time()-t0:.0f}s)')
+
+    k         = results[0][0]
+    all_p0    = np.array([r[1] for r in results])
+    all_theta = np.array([r[2] for r in results])
+    ngs       = np.array([r[9] for r in results])
+    n_with_bispec = sum(1 for r in results if r[3] is not None)
+    print(f'[{label}] {n_with_bispec}/{n} samples have bispectrum')
+
+    with h5py.File(out_fn, 'w') as f:
+        f.create_dataset('theta', data=all_theta)
+        f.create_dataset('p0',    data=all_p0)
+        f.create_dataset('k',     data=k)
+        f.create_dataset('ngs',   data=ngs)
+        if n_with_bispec == n:
+            f.create_dataset('b123', data=np.array([r[3] for r in results]))
+            f.create_dataset('q123', data=np.array([r[4] for r in results]))
+            f.create_dataset('klim', data=np.array([r[5] for r in results]))
+            f.create_dataset('i_k1', data=np.array([r[6] for r in results]))
+            f.create_dataset('i_k2', data=np.array([r[7] for r in results]))
+            f.create_dataset('i_k3', data=np.array([r[8] for r in results]))
 
     print(f'[{label}] Wrote {out_fn}: theta {all_theta.shape}, p0 {all_p0.shape}')
 
@@ -243,10 +325,12 @@ def collect_sobol_alpt(out_fn):
 # ---------------------------------------------------------------------------
 
 COLLECTORS = {
-    'bias_fid_hod':   lambda: collect_bias_fid(HOD_bias_dir,  f'{out_dir}/bias_fid_HOD_data.hdf5',  'bias_fid_hod'),
-    'bias_fid_nlb':   lambda: collect_bias_fid(NLB_bias_dir,  f'{out_dir}/bias_fid_NLB_data.hdf5',  'bias_fid_nlb'),
-    'bias_lhc_hod':   lambda: collect_lhc_hod(               f'{out_dir}/bias_lhc_hod_data.hdf5'),
-    'bias_sobol_alpt': lambda: collect_sobol_alpt(            f'{out_dir}/bias_sobol_alpt_data.hdf5'),
+    'bias_fid_hod':        lambda: collect_bias_fid(HOD_bias_dir,  f'{out_dir}/bias_fid_HOD_data.hdf5',  'bias_fid_hod'),
+    'bias_fid_nlb':        lambda: collect_bias_fid(NLB_bias_dir,  f'{out_dir}/bias_fid_NLB_data.hdf5',  'bias_fid_nlb'),
+    'bias_fid_hod_norsd':  lambda: collect_bias_fid_norsd(HOD_bias_dir, f'{out_dir}/bias_fid_HOD_noRSD_data.hdf5', 'bias_fid_hod_norsd'),
+    'bias_fid_nlb_norsd':  lambda: collect_bias_fid_norsd(NLB_bias_dir, f'{out_dir}/bias_fid_NLB_noRSD_data.hdf5', 'bias_fid_nlb_norsd'),
+    'bias_lhc_hod':        lambda: collect_lhc_hod(               f'{out_dir}/bias_lhc_hod_data.hdf5'),
+    'bias_sobol_alpt':     lambda: collect_sobol_alpt(            f'{out_dir}/bias_sobol_alpt_data.hdf5'),
 }
 
 if __name__ == '__main__':
