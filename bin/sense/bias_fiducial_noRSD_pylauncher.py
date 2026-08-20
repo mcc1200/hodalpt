@@ -36,12 +36,22 @@ HOD_DIR = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias/HOD'
 N_HOD   = 1000
 
 
+# every key save_spectrum() writes, in write order -- 'q123' is last dataset
+# written before the attrs block, so a job killed (e.g. SLURM walltime) after
+# 'b123' but before the file closes leaves a file with p0+b123 but no q123;
+# checking the full set (rather than just p0+b123) catches that truncation.
+_SPEC_KEYS = ['theta', 'ngs', 'xyz', 'k', 'p0', 'nmodes', 'shotnoise',
+              'i_k1', 'i_k2', 'i_k3', 'b123', 'q123']
+
+
 def _spec_complete(fn):
-    '''Return True if fn is an existing h5 file with both p0 and b123.'''
+    '''Return True if fn is an existing, openable h5 file with every key
+    save_spectrum() writes. Catches both missing files and ones truncated by
+    a mid-write kill (corrupt/unopenable, or opens but missing trailing keys).'''
     import h5py
     try:
         with h5py.File(fn, 'r') as f:
-            return 'p0' in f and 'b123' in f
+            return all(k in f for k in _SPEC_KEYS)
     except Exception:
         return False
 
