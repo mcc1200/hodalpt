@@ -5,13 +5,20 @@ Usage:
     python collect.py [bias_fid_hod] [bias_fid_nlb] [bias_fid_hod_norsd] \\
                        [bias_fid_nlb_norsd] [bias_lhc_hod] [bias_sobol_alpt]
 
-With no arguments, all six datasets are collected.
+With no arguments, all six of the above datasets are collected.
 
 bias_fid_*_norsd reads the real-space (rsd=False) spec.noRSD.i.h5 runs from
 bias_fiducial_noRSD.py (spectra live alongside the RSD spec.i.h5 files in
 the same NLB_bias_dir/HOD_bias_dir, but are collected separately and written
 to bias_fid_*_noRSD_data.hdf5 so as not to overwrite the RSD datasets). They
 have no 'p2' -- no quadrupole in real space.
+
+Opt-in only (not part of the no-arg default -- request by name):
+    python collect.py bias_fid_nlb_norsd_positions bias_fid_hod_norsd_positions
+
+These archive real-space galaxy positions ('xyz', keyed by sample 'idx') to
+corral -- large, and only useful for a possible future apply-RSD-in-post-
+processing step, so kept out of the routine training-data collection.
 '''
 import argparse
 import h5py
@@ -31,6 +38,13 @@ alpt_prior_fn = f'{WORK}/hodalpt/bin/sense/alpt_nlb_priors_50p.hdf5'
 sobol_base    = '/corral/utexas/AST25023/simbig/alpt/sobol'
 
 out_dir      = f'{WORK}/hodalpt/bin/npe'
+
+# real-space galaxy position archives -- corral (bulk storage), not out_dir,
+# since these are large and kept only for a possible future apply-RSD-in-
+# post-processing use case, not for routine NPE training
+NLB_positions_fn = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias/NLB_noRSD_positions.hdf5'
+HOD_positions_fn = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias/HOD_noRSD_positions.hdf5'
+
 kmax         = 1.0
 kmin_bispec  = 0.0
 k_fund       = 2 * np.pi / 1000.   # fundamental wavenumber for Lbox=1000 Mpc/h
@@ -187,6 +201,61 @@ def collect_bias_fid_norsd(bias_dir, out_fn, label):
     print(f'[{label}] Wrote {out_fn}: theta {all_theta.shape}, p0 {all_p0.shape}')
 
 
+def _load_xyz_norsd(args):
+    fn, i = args
+    with h5py.File(fn, 'r') as f:
+        xyz = f['xyz'][:]
+        ngs = f['ngs'][()]
+    return i, ngs, xyz
+
+
+def collect_positions_norsd(bias_dir, out_fn, label):
+    '''Archive real-space galaxy positions on corral, explicitly keyed by
+    sample index (not just concatenation order), for applying RSD in
+    post-processing later without re-running the pipeline. Kept separate
+    from collect_bias_fid_norsd's summary-stat file since positions are
+    much larger and are only ever needed for that hypothetical use case --
+    not part of the default no-arg collect.py run, request by name.
+    '''
+    available = sorted(
+        [fn for fn in os.listdir(bias_dir) if fn.startswith('spec.noRSD.') and fn.endswith('.h5')],
+        key=lambda fn: int(fn.split('.')[2])
+    )
+    idx = [int(fn.split('.')[2]) for fn in available]
+    n = len(available)
+    print(f'[{label}] Found {n} spectra in {bias_dir}')
+
+    paths = [(os.path.join(bias_dir, fn), i) for fn, i in zip(available, idx)]
+    results = [None] * n
+    t0 = time.time()
+
+    with ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
+        futures = {pool.submit(_load_xyz_norsd, args): k for k, args in enumerate(paths)}
+        done = 0
+        for fut in as_completed(futures):
+            results[futures[fut]] = fut.result()
+            done += 1
+            if done % 500 == 0 or done == n:
+                print(f'  {done}/{n}  ({time.time()-t0:.0f}s)')
+
+    all_idx = np.array([r[0] for r in results])
+    ngs     = np.array([r[1] for r in results])
+    # ngs varies per sample, so xyz can't stack into one fixed-shape array --
+    # concatenate into one flat (sum(ngs), 3) array; reconstruct sample i's
+    # positions via offsets = np.concatenate([[0], np.cumsum(ngs)]) matched
+    # against all_idx (NOT positional order -- indices can have gaps if run
+    # against a partial/in-progress data directory), i.e.
+    # xyz[offsets[j]:offsets[j+1]] for all_idx[j] == i.
+    all_xyz = np.concatenate([r[2] for r in results], axis=0)
+
+    with h5py.File(out_fn, 'w') as f:
+        f.create_dataset('idx', data=all_idx)
+        f.create_dataset('ngs', data=ngs)
+        f.create_dataset('xyz', data=all_xyz)
+
+    print(f'[{label}] Wrote {out_fn}: idx {all_idx.shape}, ngs {ngs.shape}, xyz {all_xyz.shape}')
+
+
 # ---------------------------------------------------------------------------
 # bias_lhc_hod
 # ---------------------------------------------------------------------------
@@ -324,7 +393,7 @@ def collect_sobol_alpt(out_fn):
 # CLI
 # ---------------------------------------------------------------------------
 
-COLLECTORS = {
+DEFAULT_COLLECTORS = {
     'bias_fid_hod':        lambda: collect_bias_fid(HOD_bias_dir,  f'{out_dir}/bias_fid_HOD_data.hdf5',  'bias_fid_hod'),
     'bias_fid_nlb':        lambda: collect_bias_fid(NLB_bias_dir,  f'{out_dir}/bias_fid_NLB_data.hdf5',  'bias_fid_nlb'),
     'bias_fid_hod_norsd':  lambda: collect_bias_fid_norsd(HOD_bias_dir, f'{out_dir}/bias_fid_HOD_noRSD_data.hdf5', 'bias_fid_hod_norsd'),
@@ -333,10 +402,20 @@ COLLECTORS = {
     'bias_sobol_alpt':     lambda: collect_sobol_alpt(            f'{out_dir}/bias_sobol_alpt_data.hdf5'),
 }
 
+# opt-in only -- large corral archives for the just-in-case apply-RSD-later
+# path, not needed for routine NPE training, so excluded from the default
+# no-arg run (must be requested by name)
+OPTIN_COLLECTORS = {
+    'bias_fid_nlb_norsd_positions': lambda: collect_positions_norsd(NLB_bias_dir, NLB_positions_fn, 'bias_fid_nlb_norsd_positions'),
+    'bias_fid_hod_norsd_positions': lambda: collect_positions_norsd(HOD_bias_dir, HOD_positions_fn, 'bias_fid_hod_norsd_positions'),
+}
+
+COLLECTORS = {**DEFAULT_COLLECTORS, **OPTIN_COLLECTORS}
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Collect NPE training datasets.')
-    parser.add_argument('datasets', nargs='*', choices=list(COLLECTORS), default=list(COLLECTORS),
-                        help='Which datasets to collect (default: all)')
+    parser.add_argument('datasets', nargs='*', choices=list(COLLECTORS), default=list(DEFAULT_COLLECTORS),
+                        help='Which datasets to collect (default: all except the opt-in position archives)')
     args = parser.parse_args()
 
     for name in args.datasets:
