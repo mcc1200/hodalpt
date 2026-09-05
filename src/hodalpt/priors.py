@@ -100,17 +100,17 @@ def sample_bias_realspace(seed, model='nonlocal2'):
         # sample nmean (ranges set based on best-fit and spanning 10x)
         sample_nmean = np.zeros((4,4))
         # knots
-        sample_nmean[0,0] = 10**rng.uniform(3e-5, 3e-4) 
-        sample_nmean[0,1] = 10**rng.uniform(1e-5, 1e-4) 
-        sample_nmean[0,2] = 10**rng.uniform(1e-6, 1e-5) 
+        sample_nmean[0,0] = rng.uniform(3e-5, 3e-4)
+        sample_nmean[0,1] = rng.uniform(1e-5, 1e-4)
+        sample_nmean[0,2] = rng.uniform(1e-6, 1e-5)
         # filaments
-        sample_nmean[1,0] = 10**rng.uniform(1e-5, 1e-4) 
-        sample_nmean[1,1] = 10**rng.uniform(5e-5, 5e-4) 
-        sample_nmean[1,2] = 10**rng.uniform(1e-5, 1e-4) 
-        # sheets 
-        sample_nmean[2,0] = 10**rng.uniform(1e-6, 1e-5) 
-        sample_nmean[2,1] = 10**rng.uniform(5e-6, 5e-5) 
-        sample_nmean[2,2] = 10**rng.uniform(5e-6, 5e-5) 
+        sample_nmean[1,0] = rng.uniform(1e-5, 1e-4)
+        sample_nmean[1,1] = rng.uniform(5e-5, 5e-4)
+        sample_nmean[1,2] = rng.uniform(1e-5, 1e-4)
+        # sheets
+        sample_nmean[2,0] = rng.uniform(1e-6, 1e-5)
+        sample_nmean[2,1] = rng.uniform(5e-6, 5e-5)
+        sample_nmean[2,2] = rng.uniform(5e-6, 5e-5)
 
         # sample alpha
         sample_alpha = np.zeros((4,4))
