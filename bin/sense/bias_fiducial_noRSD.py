@@ -4,7 +4,7 @@ import numpy as np
 import h5py
 from hodalpt import priors
 from hodalpt.sims import alpt as CS
-from hodalpt.sims import quijote as Q
+# from hodalpt.sims import quijote as Q  # HOD regen disabled, see below
 from nbodykit.lab import ArrayCatalog, FFTPower
 import time
 import pyfftw
@@ -22,19 +22,22 @@ for one fiducial_hr realization:
         save positions xyz_g
     compute power spectra
         save k p0k p2k
+
+NLB (ALPT bias) only for now -- HOD spectra don't depend on the bias priors,
+so HOD regeneration is commented out below rather than rerun.
 '''
 i0       = int(sys.argv[1])
 i1       = int(sys.argv[2])
 do_plot  = '--plot' in sys.argv
 
-n_hod = int(1000)
+# n_hod = int(1000)
 dm_dir = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/alpt/'
 outdir = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias'
-path_quij = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0'
+# path_quij = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0'
 outdir_NLB = os.path.join(outdir,'NLB')
-outdir_HOD =  os.path.join(outdir,'HOD')
+# outdir_HOD =  os.path.join(outdir,'HOD')
 os.makedirs(outdir_NLB, exist_ok=True)
-os.makedirs(outdir_HOD, exist_ok=True)
+# os.makedirs(outdir_HOD, exist_ok=True)
 
 def save_spectrum(fname, xyz, theta):
     """Save FFTPower multipoles to HDF5."""
@@ -73,12 +76,12 @@ def save_spectrum(fname, xyz, theta):
         f.attrs['kmin']    = 0.008
         f.attrs['dk']      = 0.005
 
-_HOD_KEYS = ['logMmin', 'sigma_logM', 'logM0', 'logM1', 'alpha',
-             'Abias', 'eta_conc', 'eta_cen', 'eta_sat']
-
-def hod_to_vec(hod):
-    """Flatten HOD dict to 1-D array in canonical order (_HOD_KEYS)."""
-    return np.array([hod[k] for k in _HOD_KEYS])
+# _HOD_KEYS = ['logMmin', 'sigma_logM', 'logM0', 'logM1', 'alpha',
+#              'Abias', 'eta_conc', 'eta_cen', 'eta_sat']
+#
+# def hod_to_vec(hod):
+#     """Flatten HOD dict to 1-D array in canonical order (_HOD_KEYS)."""
+#     return np.array([hod[k] for k in _HOD_KEYS])
 
 def nlb_to_vec(theta_gal):
     """Flatten NLB dict to 1-D array: alpha(16), beta(16), nmean(16),
@@ -103,12 +106,12 @@ for i in range(i0, i1):
     xyz_nlb = CS.CSbox_galaxy(theta_gal, None, dm_dir, bias_model='nonlocal2', subgrid=True, silent=True, rsd=False)
     save_spectrum(fname_NLB, xyz_nlb, nlb_to_vec(theta_gal))
 
-    if i < n_hod:
-        fname_HOD = outdir_HOD+'/spec.noRSD.%i.h5' % i
-        hod = priors.sample_HOD(seed=i)
-        gals =  Q.HODgalaxies(hod, path_quij, z=0.5)
-        xyz_hod = np.array(gals['Position'])
-        save_spectrum(fname_HOD, xyz_hod, hod_to_vec(hod))
+    # if i < n_hod:
+    #     fname_HOD = outdir_HOD+'/spec.noRSD.%i.h5' % i
+    #     hod = priors.sample_HOD(seed=i)
+    #     gals =  Q.HODgalaxies(hod, path_quij, z=0.5)
+    #     xyz_hod = np.array(gals['Position'])
+    #     save_spectrum(fname_HOD, xyz_hod, hod_to_vec(hod))
 
     dt = time.time() - t_i
     print('[%i/%i] sample %i done in %.1f s (total %.1f min)' % (
@@ -129,13 +132,13 @@ if do_plot:
         ax_pk.plot(k_nlb, p0_nlb, c='C0', lw=1, label='NLB' if i == i0 else None)
         ax_bk.plot(range(len(b123_nlb)), b123_nlb, c='C0', lw=1, label='NLB' if i == i0 else None)
 
-        if i < n_hod:
-            with h5py.File(outdir_HOD + '/spec.noRSD.%i.h5' % i, 'r') as f:
-                k_hod    = f['k'][:]
-                p0_hod   = f['p0'][:]
-                b123_hod = f['b123'][:]
-            ax_pk.plot(k_hod, p0_hod, c='k', ls='--', lw=2, label='HOD' if i == i0 else None)
-            ax_bk.plot(range(len(b123_hod)), b123_hod, c='k', ls='--', lw=2, label='HOD' if i == i0 else None)
+        # if i < n_hod:
+        #     with h5py.File(outdir_HOD + '/spec.noRSD.%i.h5' % i, 'r') as f:
+        #         k_hod    = f['k'][:]
+        #         p0_hod   = f['p0'][:]
+        #         b123_hod = f['b123'][:]
+        #     ax_pk.plot(k_hod, p0_hod, c='k', ls='--', lw=2, label='HOD' if i == i0 else None)
+        #     ax_bk.plot(range(len(b123_hod)), b123_hod, c='k', ls='--', lw=2, label='HOD' if i == i0 else None)
 
     ax_pk.set_xlabel(r'$k$')
     ax_pk.set_xlim(1e-2, 0.5)
