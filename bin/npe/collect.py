@@ -154,7 +154,12 @@ def _load_bias_fid_norsd(args):
             q123 = f['q123'][:][klim]
         else:
             b123, q123 = None, None
-    return k[mask], p0[mask], theta, b123, q123, klim, i_k1, i_k2, i_k3, ngs
+        if 'cic_pdf' in f:
+            cic_pdf       = f['cic_pdf'][:]
+            cic_pdf_edges = f['cic_pdf_edges'][:]
+        else:
+            cic_pdf, cic_pdf_edges = None, None
+    return k[mask], p0[mask], theta, b123, q123, klim, i_k1, i_k2, i_k3, ngs, cic_pdf, cic_pdf_edges
 
 
 def collect_bias_fid_norsd(bias_dir, out_fn, label):
@@ -183,7 +188,9 @@ def collect_bias_fid_norsd(bias_dir, out_fn, label):
     all_theta = np.array([r[2] for r in results])
     ngs       = np.array([r[9] for r in results])
     n_with_bispec = sum(1 for r in results if r[3] is not None)
+    n_with_cic    = sum(1 for r in results if r[10] is not None)
     print(f'[{label}] {n_with_bispec}/{n} samples have bispectrum')
+    print(f'[{label}] {n_with_cic}/{n} samples have cic_pdf')
 
     with h5py.File(out_fn, 'w') as f:
         f.create_dataset('theta', data=all_theta)
@@ -197,6 +204,11 @@ def collect_bias_fid_norsd(bias_dir, out_fn, label):
             f.create_dataset('i_k1', data=np.array([r[6] for r in results]))
             f.create_dataset('i_k2', data=np.array([r[7] for r in results]))
             f.create_dataset('i_k3', data=np.array([r[8] for r in results]))
+        if n_with_cic == n:
+            f.create_dataset('cic_pdf',       data=np.array([r[10] for r in results]))
+            f.create_dataset('cic_pdf_edges', data=results[0][11])
+        else:
+            print(f'[{label}] Skipping cic_pdf dataset ({n_with_cic}/{n} present)')
 
     print(f'[{label}] Wrote {out_fn}: theta {all_theta.shape}, p0 {all_p0.shape}')
 
