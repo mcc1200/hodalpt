@@ -4,6 +4,7 @@ import glob
 import numpy as np
 import h5py
 import multiprocessing as mp
+from tqdm import tqdm
 from nbodykit.lab import ArrayCatalog
 
 '''
@@ -83,19 +84,17 @@ if __name__ == '__main__':
     t_start = time.time()
 
     with ctx.Pool(nworkers) as pool:
-        for j, (fpath, status, dt, err) in enumerate(pool.imap_unordered(process_file, tasks), 1):
+        pbar = tqdm(pool.imap_unordered(process_file, tasks), total=len(tasks),
+                    desc=dataset, unit='file', mininterval=1.0)
+        for fpath, status, dt, err in pbar:
             if status == 'done':
                 n_done += 1
             elif status == 'skipped':
                 n_skip += 1
             else:
                 n_fail += 1
-                print('FAILED %s: %s' % (fpath, err), flush=True)
-
-            if j <= 5 or j % 50 == 0 or j == len(tasks):
-                elapsed = time.time() - t_start
-                print('[%i/%i] done=%i skip=%i fail=%i  last=%.2fs  %.1fs elapsed  %.2f files/s' % (
-                    j, len(tasks), n_done, n_skip, n_fail, dt, elapsed, j / elapsed), flush=True)
+                tqdm.write('FAILED %s: %s' % (fpath, err))
+            pbar.set_postfix(done=n_done, skip=n_skip, fail=n_fail, last='%.2fs' % dt)
 
     print('finished %s in %.1f min: %i done, %i skipped, %i failed' % (
         dataset, (time.time() - t_start) / 60., n_done, n_skip, n_fail), flush=True)

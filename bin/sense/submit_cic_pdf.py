@@ -51,5 +51,12 @@ def submit_cic_pdf(dataset='NLB', i0=0, i1=-1, overwrite=False,
     return None
 
 if __name__ == '__main__':
-    submit_cic_pdf(dataset='NLB', i0=0, i1=-1, time=2, queue='normal')
-    submit_cic_pdf(dataset='HOD', i0=0, i1=-1, time=1, queue='normal')
+    import sys
+    # smoke test: python submit_cic_pdf.py 0 50  -> first 50 of both NLB and HOD
+    i0 = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    i1 = int(sys.argv[2]) if len(sys.argv) > 2 else -1
+    queue = 'development' if i1 != -1 else 'normal'
+    time  = 0.5 if i1 != -1 else 2
+
+    submit_cic_pdf(dataset='NLB', i0=i0, i1=i1, time=time, queue=queue)
+    submit_cic_pdf(dataset='HOD', i0=i0, i1=i1, time=(0.5 if i1 != -1 else 1), queue=queue)
