@@ -52,6 +52,20 @@ def save_spectrum(fname, xyz, theta):
     p0     = poles['power_0'].real - poles.attrs['shotnoise']
     # p2     = poles['power_2'].real
     nmodes = poles['modes']
+    ######## PDF ###################################
+    Nmesh = 40
+    BoxSize=1000.
+    bins = np.arange(-0.5, 85.5, 1)
+
+    mesh = cat.to_mesh(Nmesh=Nmesh, BoxSize=BoxSize, resampler='cic',
+                        compensated=False, interlaced=False)
+    field = mesh.paint(mode='real')
+    mean_n = cat.csize / (BoxSize ** 3)
+    cell_vol = (BoxSize / Nmesh) ** 3
+    counts = field.value.ravel() * mean_n * cell_vol
+    pdf, edges = np.histogram(counts, bins=bins, density=False)
+    pdf = pdf / pdf.sum()
+
     ######### B(k) #################################
     bispec = stats.B0_periodic(xyz.T, w=None, Lbox=1000., fft='pyfftw', silent=True)
     
@@ -64,6 +78,8 @@ def save_spectrum(fname, xyz, theta):
         # f['p2']       = p2
         f['nmodes']   = nmodes
         f['shotnoise'] = poles.attrs['shotnoise']
+        f['cic_pdf']  = pdf
+        f['cic_pdf_edges'] = edges
         f['i_k1']     = bispec['i_k1']
         f['i_k2']     = bispec['i_k2']
         f['i_k3']     = bispec['i_k3']
@@ -75,6 +91,8 @@ def save_spectrum(fname, xyz, theta):
         f.attrs['Nmesh']   = 256
         f.attrs['kmin']    = 0.008
         f.attrs['dk']      = 0.005
+        f.attrs['cic_pdf_Nmesh'] = Nmesh
+        f.attrs['cic_pdf_BoxSize'] = BoxSize
 
 # _HOD_KEYS = ['logMmin', 'sigma_logM', 'logM0', 'logM1', 'alpha',
 #              'Abias', 'eta_conc', 'eta_cen', 'eta_sat']
@@ -104,6 +122,7 @@ for i in range(i0, i1):
     seed = i
     theta_gal = priors.sample_bias_realspace(seed=seed, model='nonlocal2')
     xyz_nlb = CS.CSbox_galaxy(theta_gal, None, dm_dir, bias_model='nonlocal2', subgrid=True, silent=True, rsd=False)
+
     save_spectrum(fname_NLB, xyz_nlb, nlb_to_vec(theta_gal))
 
     # if i < n_hod:

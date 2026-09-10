@@ -122,7 +122,7 @@ def sample_bias_realspace(seed, model='nonlocal2'):
 
         # sample rhoeps 
         sample_rhoeps = np.zeros((4,4))
-        sample_rhoeps[:3,:3] = rng.uniform(0., 20, size=(3,3))
+        sample_rhoeps[:3,:3] = rng.uniform(2.0, 20, size=(3,3)) # modified
 
         # sample eps
         sample_eps = np.zeros((4,4))
