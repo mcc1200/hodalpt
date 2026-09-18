@@ -137,6 +137,71 @@ def sample_bias_realspace(seed, model='nonlocal2'):
         raise NotImplementedError
     return theta
 
+def sample_bias_realspace_conservative(seed, model='nonlocal2'):
+    ''' sample comsic web classification bias model based on best-fit to
+    Quijote fiducial + HOD 
+
+
+    returns
+    -------
+    dict with alpha, beta, nmean, and rsd parameters
+    function to write pm 10x ALPT nlb priors centered on quijote fiducial best fit.
+    alpha, beta, nmean are arrays of cenral best fit values (16,), width is desired prior width (percentile)
+    returns dictionaries for alpha, beta, nmean 
+
+    modifications from redshift-space priors:
+    * linear-uniform prior on nmean
+    * no theta-rsd dictionary produced
+    '''
+    rng = np.random.default_rng(seed)
+    
+    if model == 'nonlocal2': 
+        # sample nmean (ranges set based on best-fit and spanning 10x)
+        sample_nmean = np.zeros((4,4))
+        # knots
+        sample_nmean[0,0] = rng.uniform(3e-6, 3e-4) # kk f/10
+        sample_nmean[0,1] = rng.uniform(1e-5, 1e-3) # kf c*10,
+        sample_nmean[0,2] = rng.uniform(1e-6, 1e-5) # no change
+        # filaments
+        sample_nmean[1,0] = rng.uniform(1e-5, 1e-4) # fk no change
+        sample_nmean[1,1] = rng.uniform(5e-5, 5e-3) # ff c*10
+        sample_nmean[1,2] = rng.uniform(1e-5, 1e-4)
+        # sheets
+        sample_nmean[2,0] = rng.uniform(1e-6, 1e-5)
+        sample_nmean[2,1] = rng.uniform(5e-6, 5e-5)
+        sample_nmean[2,2] = rng.uniform(5e-6, 5e-5)
+
+        # sample alpha
+        sample_alpha = np.zeros((4,4))
+        sample_alpha[:3,:3] = rng.uniform(0.01, 3, size=(3,3))
+
+        sample_alpha[0,0] = rng.uniform(0.01, 5) # allow alpha kk to boost as well
+
+        sample_alpha[1,0] = rng.uniform(0.01, 5) # allow alpha fk to raise amplitude
+        sample_alpha[1,1] = rng.uniform(0.01, 5) # allow alpha ff to raise amplitude
+    
+
+        # sample beta 
+        sample_beta = np.zeros((4,4))
+        sample_beta[:3,:3] = rng.uniform(0.1, 100, size=(3,3))
+
+        # sample rhoeps 
+        sample_rhoeps = np.zeros((4,4))
+        sample_rhoeps[:3,:3] = rng.uniform(1.0, 20, size=(3,3)) # modified
+
+        # sample eps
+        sample_eps = np.zeros((4,4))
+        sample_eps[:3,:3] = rng.uniform(0., 4, size=(3,3))
+        
+        theta = {'nmean': sample_nmean, 
+                 'alpha': sample_alpha, 
+                 'beta': sample_beta, 
+                 'rhoeps': sample_rhoeps, 
+                 'eps': sample_eps} 
+    else: 
+        raise NotImplementedError
+    return theta
+
 def sample_HOD(seed): 
     ''' sample HOD parameters from Gaussian priors set around SIMBIG CMASS
     constraints  

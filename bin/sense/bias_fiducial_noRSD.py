@@ -120,7 +120,7 @@ for i in range(i0, i1):
 
     fname_NLB = outdir_NLB+'/spec.noRSD.%i.h5' % i
     seed = i
-    theta_gal = priors.sample_bias_realspace(seed=seed, model='nonlocal2')
+    theta_gal = priors.sample_bias_realspace_conservative(seed=seed, model='nonlocal2')
     xyz_nlb = CS.CSbox_galaxy(theta_gal, None, dm_dir, bias_model='nonlocal2', subgrid=True, silent=True, rsd=False)
 
     save_spectrum(fname_NLB, xyz_nlb, nlb_to_vec(theta_gal))
