@@ -175,10 +175,7 @@ def sample_bias_realspace_conservative(seed, model='nonlocal2'):
         sample_alpha = np.zeros((4,4))
         sample_alpha[:3,:3] = rng.uniform(0.01, 3, size=(3,3))
 
-        sample_alpha[0,0] = rng.uniform(0.01, 5) # allow alpha kk to boost as well
-
-        sample_alpha[1,0] = rng.uniform(0.01, 5) # allow alpha fk to raise amplitude
-        sample_alpha[1,1] = rng.uniform(0.01, 5) # allow alpha ff to raise amplitude
+        sample_alpha[1,1] = rng.uniform(0.01, 4) # allow alpha ff to raise amplitude
     
 
         # sample beta 
