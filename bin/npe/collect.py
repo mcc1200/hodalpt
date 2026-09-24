@@ -92,22 +92,31 @@ def collect_bias_fid(bias_dir, out_fn, label):
     results = [None] * n
     t0 = time.time()
 
+    skipped = []
     with ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
         futures = {pool.submit(_load_bias_fid, args): i for i, args in enumerate(paths)}
         done = 0
         for fut in as_completed(futures):
-            results[futures[fut]] = fut.result()
+            i = futures[fut]
+            try:
+                results[i] = fut.result()
+            except Exception as e:
+                print(f'  Skipping {paths[i][0]}: {e}')
+                skipped.append(i)
             done += 1
             if done % 500 == 0 or done == n:
                 print(f'  {done}/{n}  ({time.time()-t0:.0f}s)')
 
+    results = [r for r in results if r is not None]
     k         = results[0][0]
     all_p0    = np.array([r[1] for r in results])
     all_p2    = np.array([r[2] for r in results])
     all_theta = np.array([r[3] for r in results])
     ngs       = np.array([r[10] for r in results])
     n_with_bispec = sum(1 for r in results if r[4] is not None)
-    print(f'[{label}] {n_with_bispec}/{n} samples have bispectrum')
+    print(f'[{label}] {n_with_bispec}/{len(results)} samples have bispectrum')
+    if skipped:
+        print(f'[{label}] Skipped {len(skipped)} unreadable files: {[paths[i][0] for i in skipped]}')
 
     with h5py.File(out_fn, 'w') as f:
         f.create_dataset('theta', data=all_theta)
@@ -115,7 +124,7 @@ def collect_bias_fid(bias_dir, out_fn, label):
         f.create_dataset('p2',    data=all_p2)
         f.create_dataset('k',     data=k)
         f.create_dataset('ngs',   data=ngs)
-        if n_with_bispec == n:
+        if n_with_bispec == len(results):
             f.create_dataset('b123', data=np.array([r[4] for r in results]))
             f.create_dataset('q123', data=np.array([r[5] for r in results]))
             f.create_dataset('klim', data=np.array([r[6] for r in results]))
@@ -174,41 +183,50 @@ def collect_bias_fid_norsd(bias_dir, out_fn, label):
     results = [None] * n
     t0 = time.time()
 
+    skipped = []
     with ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
         futures = {pool.submit(_load_bias_fid_norsd, args): i for i, args in enumerate(paths)}
         done = 0
         for fut in as_completed(futures):
-            results[futures[fut]] = fut.result()
+            i = futures[fut]
+            try:
+                results[i] = fut.result()
+            except Exception as e:
+                print(f'  Skipping {paths[i][0]}: {e}')
+                skipped.append(i)
             done += 1
             if done % 500 == 0 or done == n:
                 print(f'  {done}/{n}  ({time.time()-t0:.0f}s)')
 
+    results = [r for r in results if r is not None]
     k         = results[0][0]
     all_p0    = np.array([r[1] for r in results])
     all_theta = np.array([r[2] for r in results])
     ngs       = np.array([r[9] for r in results])
     n_with_bispec = sum(1 for r in results if r[3] is not None)
     n_with_cic    = sum(1 for r in results if r[10] is not None)
-    print(f'[{label}] {n_with_bispec}/{n} samples have bispectrum')
-    print(f'[{label}] {n_with_cic}/{n} samples have cic_pdf')
+    print(f'[{label}] {n_with_bispec}/{len(results)} samples have bispectrum')
+    print(f'[{label}] {n_with_cic}/{len(results)} samples have cic_pdf')
+    if skipped:
+        print(f'[{label}] Skipped {len(skipped)} unreadable files: {[paths[i][0] for i in skipped]}')
 
     with h5py.File(out_fn, 'w') as f:
         f.create_dataset('theta', data=all_theta)
         f.create_dataset('p0',    data=all_p0)
         f.create_dataset('k',     data=k)
         f.create_dataset('ngs',   data=ngs)
-        if n_with_bispec == n:
+        if n_with_bispec == len(results):
             f.create_dataset('b123', data=np.array([r[3] for r in results]))
             f.create_dataset('q123', data=np.array([r[4] for r in results]))
             f.create_dataset('klim', data=np.array([r[5] for r in results]))
             f.create_dataset('i_k1', data=np.array([r[6] for r in results]))
             f.create_dataset('i_k2', data=np.array([r[7] for r in results]))
             f.create_dataset('i_k3', data=np.array([r[8] for r in results]))
-        if n_with_cic == n:
+        if n_with_cic == len(results):
             f.create_dataset('cic_pdf',       data=np.array([r[10] for r in results]))
             f.create_dataset('cic_pdf_edges', data=results[0][11])
         else:
-            print(f'[{label}] Skipping cic_pdf dataset ({n_with_cic}/{n} present)')
+            print(f'[{label}] Skipping cic_pdf dataset ({n_with_cic}/{len(results)} present)')
 
     print(f'[{label}] Wrote {out_fn}: theta {all_theta.shape}, p0 {all_p0.shape}')
 
