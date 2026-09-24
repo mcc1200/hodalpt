@@ -53,6 +53,36 @@ N_SOBOL   = 2048
 N_WORKERS = 16
 
 
+def _compress_ranges(indices):
+    '''e.g. [9820, 9821, 9822, 12082, 12083] -> "9820-9822, 12082-12083"'''
+    indices = sorted(indices)
+    ranges = []
+    start = prev = indices[0]
+    for idx in indices[1:]:
+        if idx == prev + 1:
+            prev = idx
+            continue
+        ranges.append((start, prev))
+        start = prev = idx
+    ranges.append((start, prev))
+    return ', '.join(f'{a}' if a == b else f'{a}-{b}' for a, b in ranges)
+
+
+def _report_skipped(label, out_fn, skipped_paths):
+    '''Log unreadable files to <out_fn>.skipped.txt (full paths) and print a
+    compact summary -- with 1000s of skips (e.g. whole failed job-array
+    chunks) dumping every path to stdout is unusable.
+    '''
+    if not skipped_paths:
+        return
+    log_fn = f'{out_fn}.skipped.txt'
+    with open(log_fn, 'w') as f:
+        f.write('\n'.join(skipped_paths) + '\n')
+    idx = sorted(int(os.path.basename(p).split('.')[-2]) for p in skipped_paths)
+    print(f'[{label}] Skipped {len(skipped_paths)} unreadable files (full list: {log_fn})')
+    print(f'[{label}] Skipped indices: {_compress_ranges(idx)}')
+
+
 # ---------------------------------------------------------------------------
 # bias_fid_HOD  /  bias_fid_NLB
 # ---------------------------------------------------------------------------
@@ -100,12 +130,11 @@ def collect_bias_fid(bias_dir, out_fn, label):
             i = futures[fut]
             try:
                 results[i] = fut.result()
-            except Exception as e:
-                print(f'  Skipping {paths[i][0]}: {e}')
+            except Exception:
                 skipped.append(i)
             done += 1
             if done % 500 == 0 or done == n:
-                print(f'  {done}/{n}  ({time.time()-t0:.0f}s)')
+                print(f'  {done}/{n}  ({time.time()-t0:.0f}s, {len(skipped)} skipped)')
 
     results = [r for r in results if r is not None]
     k         = results[0][0]
@@ -115,8 +144,7 @@ def collect_bias_fid(bias_dir, out_fn, label):
     ngs       = np.array([r[10] for r in results])
     n_with_bispec = sum(1 for r in results if r[4] is not None)
     print(f'[{label}] {n_with_bispec}/{len(results)} samples have bispectrum')
-    if skipped:
-        print(f'[{label}] Skipped {len(skipped)} unreadable files: {[paths[i][0] for i in skipped]}')
+    _report_skipped(label, out_fn, [paths[i][0] for i in skipped])
 
     with h5py.File(out_fn, 'w') as f:
         f.create_dataset('theta', data=all_theta)
@@ -191,12 +219,11 @@ def collect_bias_fid_norsd(bias_dir, out_fn, label):
             i = futures[fut]
             try:
                 results[i] = fut.result()
-            except Exception as e:
-                print(f'  Skipping {paths[i][0]}: {e}')
+            except Exception:
                 skipped.append(i)
             done += 1
             if done % 500 == 0 or done == n:
-                print(f'  {done}/{n}  ({time.time()-t0:.0f}s)')
+                print(f'  {done}/{n}  ({time.time()-t0:.0f}s, {len(skipped)} skipped)')
 
     results = [r for r in results if r is not None]
     k         = results[0][0]
@@ -207,8 +234,7 @@ def collect_bias_fid_norsd(bias_dir, out_fn, label):
     n_with_cic    = sum(1 for r in results if r[10] is not None)
     print(f'[{label}] {n_with_bispec}/{len(results)} samples have bispectrum')
     print(f'[{label}] {n_with_cic}/{len(results)} samples have cic_pdf')
-    if skipped:
-        print(f'[{label}] Skipped {len(skipped)} unreadable files: {[paths[i][0] for i in skipped]}')
+    _report_skipped(label, out_fn, [paths[i][0] for i in skipped])
 
     with h5py.File(out_fn, 'w') as f:
         f.create_dataset('theta', data=all_theta)
