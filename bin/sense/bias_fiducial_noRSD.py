@@ -72,7 +72,12 @@ def save_spectrum(fname, xyz, theta):
     with h5py.File(fname, 'w') as f:
         f['theta']    = theta
         f['ngs']      = xyz.shape[0]
-        f['xyz']      = xyz
+        # xyz itself is NOT stored here -- it dwarfs every other dataset in
+        # this file (10s of MB vs a few hundred floats) and isn't read by
+        # the routine NPE collection pipeline. It's a deterministic function
+        # of seed=i, so it's reproducible later via CS.CSbox_galaxy if ever
+        # actually needed (e.g. for the opt-in position archive, which only
+        # covers indices generated before this change).
         f['k']        = k
         f['p0']       = p0
         # f['p2']       = p2

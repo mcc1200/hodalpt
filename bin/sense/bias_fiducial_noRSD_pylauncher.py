@@ -40,7 +40,12 @@ N_HOD   = 1000
 # written before the attrs block, so a job killed (e.g. SLURM walltime) after
 # 'b123' but before the file closes leaves a file with p0+b123 but no q123;
 # checking the full set (rather than just p0+b123) catches that truncation.
-_SPEC_KEYS = ['theta', 'ngs', 'xyz', 'k', 'p0', 'nmodes', 'shotnoise',
+# NOTE: 'xyz' is deliberately excluded -- save_spectrum() no longer writes it
+# (it was ~95% of every file's size and unused by the routine collection
+# pipeline; see save_spectrum's comment in bias_fiducial_noRSD.py). Do not
+# add it back here without re-adding the write, or every correctly-written
+# future file will be misclassified as truncated and endlessly resubmitted.
+_SPEC_KEYS = ['theta', 'ngs', 'k', 'p0', 'nmodes', 'shotnoise',
               'i_k1', 'i_k2', 'i_k3', 'b123', 'q123']
 
 

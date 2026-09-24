@@ -272,6 +272,13 @@ def collect_positions_norsd(bias_dir, out_fn, label):
     from collect_bias_fid_norsd's summary-stat file since positions are
     much larger and are only ever needed for that hypothetical use case --
     not part of the default no-arg collect.py run, request by name.
+
+    NOTE: save_spectrum() stopped writing 'xyz' into routine spec.noRSD.i.h5
+    files (it was ~95% of every file's size and blew through the corral
+    quota for this run) -- only samples generated before that change still
+    have it. Samples missing 'xyz' are skipped here (see the *.skipped.txt
+    log); positions for those indices are only recoverable by re-running
+    CS.CSbox_galaxy(seed=i) directly, not from this archive.
     '''
     available = sorted(
         [fn for fn in os.listdir(bias_dir) if fn.startswith('spec.noRSD.') and fn.endswith('.h5')],
@@ -285,15 +292,22 @@ def collect_positions_norsd(bias_dir, out_fn, label):
     results = [None] * n
     t0 = time.time()
 
+    skipped = []
     with ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
         futures = {pool.submit(_load_xyz_norsd, args): k for k, args in enumerate(paths)}
         done = 0
         for fut in as_completed(futures):
-            results[futures[fut]] = fut.result()
+            k = futures[fut]
+            try:
+                results[k] = fut.result()
+            except Exception:
+                skipped.append(k)
             done += 1
             if done % 500 == 0 or done == n:
-                print(f'  {done}/{n}  ({time.time()-t0:.0f}s)')
+                print(f'  {done}/{n}  ({time.time()-t0:.0f}s, {len(skipped)} skipped)')
 
+    _report_skipped(label, out_fn, [paths[k][0] for k in skipped])
+    results = [r for r in results if r is not None]
     all_idx = np.array([r[0] for r in results])
     ngs     = np.array([r[1] for r in results])
     # ngs varies per sample, so xyz can't stack into one fixed-shape array --

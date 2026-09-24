@@ -34,8 +34,11 @@ NLB_DIR = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias/NLB'
 HOD_DIR = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias/HOD'
 N_HOD   = 1000
 
-# every key save_spectrum() writes, in write order
-SPEC_KEYS = ['theta', 'ngs', 'xyz', 'k', 'p0', 'nmodes', 'shotnoise',
+# every key save_spectrum() writes, in write order. 'xyz' is deliberately
+# excluded -- save_spectrum() no longer writes it (it was ~95% of every
+# file's size and unused by the routine collection pipeline). Keep this in
+# sync with _SPEC_KEYS in bias_fiducial_noRSD_pylauncher.py.
+SPEC_KEYS = ['theta', 'ngs', 'k', 'p0', 'nmodes', 'shotnoise',
              'i_k1', 'i_k2', 'i_k3', 'b123', 'q123']
 
 
