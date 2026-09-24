@@ -31,7 +31,17 @@ i1       = int(sys.argv[2])
 do_plot  = '--plot' in sys.argv
 
 # n_hod = int(1000)
-dm_dir = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/alpt/'
+# CSbox_galaxy() re-reads the same 10 fixed ALPT files from dm_dir on every
+# single-sample invocation (this is always the same fiducial_HR/0 realization
+# -- only the bias parameters differ per sample), and that redundant NFS read
+# is the dominant per-sample cost (~6 min wall time for ~8s of actual CPU
+# work, confirmed via seff). bias_fiducial_noRSD_pylauncher.py stages those
+# files to $SCRATCH once per job and sets HODALPT_DM_DIR so every sample
+# subprocess reads the local copy instead; falls back to corral if unset
+# (e.g. running this script standalone, outside the pylauncher). Must end in
+# '/' -- CSbox_galaxy concatenates some filenames onto this directly.
+dm_dir = os.environ.get(
+    'HODALPT_DM_DIR', '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/alpt/')
 outdir = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias'
 # path_quij = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0'
 outdir_NLB = os.path.join(outdir,'NLB')

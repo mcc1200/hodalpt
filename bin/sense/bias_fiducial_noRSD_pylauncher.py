@@ -31,9 +31,21 @@ import sys
 import numpy as np
 
 
-NLB_DIR = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias/NLB'
-HOD_DIR = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias/HOD'
-N_HOD   = 1000
+NLB_DIR  = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias/NLB'
+HOD_DIR  = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/bias/HOD'
+N_HOD    = 1000
+
+# ALPT density-field files CSbox_galaxy() reads from dm_dir -- fixed set for
+# subgrid=True, bias_model='nonlocal2', zsnap=0.5 (what bias_fiducial_noRSD.py
+# calls with). Always the same fiducial_HR/0 realization, so these are staged
+# to $SCRATCH once per job below rather than re-read from corral per sample.
+ALPT_SRC_DIR = '/corral/utexas/AST25023/simbig/quijote/fiducial_HR/0/alpt'
+ALPT_FILES = [
+    'super_deltaBOX.dat', 'Tweb_.dat', 'TwebDelta_.dat',
+    'VExEULz0.500.dat', 'VEyEULz0.500.dat', 'VEzEULz0.500.dat',
+    'super_BOXposx.dat', 'super_BOXposy.dat', 'super_BOXposz.dat',
+    '2LPT.param',
+]
 
 
 # every key save_spectrum() writes, in write order -- 'q123' is last dataset
@@ -154,7 +166,21 @@ def run_bias_fiducial_noRSD_pylauncher(i0, i1, nodes=8, time=4, queue='normal',
         'export MKL_NUM_THREADS=1',
         'export OPENBLAS_NUM_THREADS=1',
         '',
+        '# Stage the ALPT density-field files to $SCRATCH once for this job --',
+        '# CSbox_galaxy() otherwise re-reads these same files from corral over',
+        '# NFS on every single-sample subprocess, which is the dominant',
+        '# per-sample cost (~6 min wall time for ~8s of actual CPU work,',
+        '# confirmed via seff). $SCRATCH is shared across all nodes in this',
+        '# allocation, so one copy here covers every task pylauncher dispatches.',
+        'export HODALPT_DM_DIR=$SCRATCH/alpt_cache_${SLURM_JOB_ID}/',
+        'mkdir -p $HODALPT_DM_DIR',
+        'cp %s $HODALPT_DM_DIR' % ' \\\n    '.join(
+            [os.path.join(ALPT_SRC_DIR, fn) for fn in ALPT_FILES]),
+        '',
         'python %s launch %s %s_${SLURM_JOB_ID}' % (os.path.abspath(__file__), cmdfile, pyl_workdir_base),
+        '',
+        '# clean up the staged copy now that every task has finished with it',
+        'rm -rf $HODALPT_DM_DIR',
         '',
     ])
 
