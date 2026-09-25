@@ -6,7 +6,7 @@ module for different priors used in the hodalpt project
 import os
 from functools import lru_cache
 import numpy as np
-
+import os
 # best-fit nmean (fit to fiducial HOD)
 nmean_bf = np.array([[9.8537e-05, 4.2518e-05, 3.3140e-06],
                      [5.7186e-05, 1.5255e-04, 3.7179e-05],
@@ -203,6 +203,7 @@ def sample_HOD(seed):
     ''' sample HOD parameters from Gaussian priors set around SIMBIG CMASS
     constraints  
     '''
+
     rng = np.random.default_rng(seed)
 
     hod = {
@@ -218,3 +219,34 @@ def sample_HOD(seed):
         }
     return hod
 
+def sample_HOD_realspace(seed): 
+    ''' sample HOD parameters from Gaussian priors set around SIMBIG CMASS
+    constraints, real space 
+    modification: multivariate gaussian prior from CMASS bispectrum npe posteriors, widened 50%
+    '''
+
+    rng = np.random.default_rng(seed)
+    CHAIN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sims", "dat", "mc.simbig.cmass.b0k_kmax0p5.npy")
+    chain_allpars = np.load(CHAIN_FILE)
+    chain = chain_allpars[:, 5:11]
+
+    mu = np.mean(chain, axis=0)
+    cov = np.cov(chain.T)
+
+    s = 1.5                      # widen stds by 50%
+    cov_puffy = s**2 * cov
+
+    t = rng.multivariate_normal(mu, cov_puffy, size=1)[0]
+
+    hod = {
+        'logMmin': t[0],
+        'sigma_logM': max(t[1],1e-3),
+        'logM0': t[2],
+        'logM1': t[3],
+        'alpha': max(t[4], 1e-3),
+        'Abias': t[5],
+        'eta_conc':1.0, # etas not used in real-space, avoids nonetype err
+        'eta_cen': 0.0, 
+        'eta_sat': 1.0
+        }
+    return hod
