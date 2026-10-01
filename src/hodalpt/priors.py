@@ -150,8 +150,9 @@ def sample_bias_realspace_conservative(seed, model='nonlocal2'):
     returns dictionaries for alpha, beta, nmean 
 
     modifications from redshift-space priors:
-    * linear-uniform prior on nmean
     * no theta-rsd dictionary produced
+    * alpha FF allowed to reach 4 (amplitude)
+    * capped floor on rhoeps at 1 (avoid pathological spectra)
     '''
     rng = np.random.default_rng(seed)
     
@@ -159,17 +160,17 @@ def sample_bias_realspace_conservative(seed, model='nonlocal2'):
         # sample nmean (ranges set based on best-fit and spanning 10x)
         sample_nmean = np.zeros((4,4))
         # knots
-        sample_nmean[0,0] = rng.uniform(3e-6, 3e-4) # kk f/10
-        sample_nmean[0,1] = rng.uniform(1e-5, 1e-3) # kf c*10,
-        sample_nmean[0,2] = rng.uniform(1e-6, 1e-5) # no change
+        sample_nmean[0,0] = 10**rng.uniform(np.log10(3e-5), np.log10(3e-4)) 
+        sample_nmean[0,1] = 10**rng.uniform(np.log10(1e-5), np.log10(1e-4)) 
+        sample_nmean[0,2] = 10**rng.uniform(np.log10(1e-6), np.log10(1e-5)) 
         # filaments
-        sample_nmean[1,0] = rng.uniform(1e-5, 1e-4) # fk no change
-        sample_nmean[1,1] = rng.uniform(5e-5, 5e-3) # ff c*10
-        sample_nmean[1,2] = rng.uniform(1e-5, 1e-4)
-        # sheets
-        sample_nmean[2,0] = rng.uniform(1e-6, 1e-5)
-        sample_nmean[2,1] = rng.uniform(5e-6, 5e-5)
-        sample_nmean[2,2] = rng.uniform(5e-6, 5e-5)
+        sample_nmean[1,0] = 10**rng.uniform(np.log10(1e-5), np.log10(1e-4)) 
+        sample_nmean[1,1] = 10**rng.uniform(np.log10(5e-5), np.log10(5e-4)) 
+        sample_nmean[1,2] = 10**rng.uniform(np.log10(1e-5), np.log10(1e-4)) 
+        # sheets 
+        sample_nmean[2,0] = 10**rng.uniform(np.log10(1e-6), np.log10(1e-5)) 
+        sample_nmean[2,1] = 10**rng.uniform(np.log10(5e-6), np.log10(5e-5)) 
+        sample_nmean[2,2] = 10**rng.uniform(np.log10(5e-6), np.log10(5e-5)) 
 
         # sample alpha
         sample_alpha = np.zeros((4,4))
@@ -233,7 +234,7 @@ def sample_HOD_realspace(seed):
     mu = np.mean(chain, axis=0)
     cov = np.cov(chain.T)
 
-    s = 1.5                      # widen stds by 50%
+    s = 1.05                      # widen stds by 50%
     cov_puffy = s**2 * cov
 
     t = rng.multivariate_normal(mu, cov_puffy, size=1)[0]
