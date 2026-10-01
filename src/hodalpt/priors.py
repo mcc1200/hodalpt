@@ -234,7 +234,7 @@ def sample_HOD_realspace(seed):
     mu = np.mean(chain, axis=0)
     cov = np.cov(chain.T)
 
-    s = 1.05                      # widen stds by 50%
+    s = 1.05                      # widen stds by 5%
     cov_puffy = s**2 * cov
 
     t = rng.multivariate_normal(mu, cov_puffy, size=1)[0]
