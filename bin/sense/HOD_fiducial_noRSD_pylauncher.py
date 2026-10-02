@@ -119,6 +119,7 @@ def run_HOD_fiducial_noRSD_pylauncher(i0, i1, nodes=8, time=4, queue='normal',
         '#SBATCH -e %s/HOD_noRSD.pyl.%i_%i.%%j.err' % (workdir, i0, i1),
         '#SBATCH -p %s' % queue,
         '#SBATCH -N %i' % nodes,
+        '#SBATCH -n %i' % (nodes * 128),
         '#SBATCH --time=%s:%s:00' % (str(hr).zfill(2), str(mn).zfill(2)),
         '#SBATCH -A AST25022',
         '',
@@ -172,6 +173,7 @@ def resume_HOD_fiducial_noRSD_pylauncher(i0, i1, jobid, nodes=8, time=2, queue='
         '#SBATCH -e %s/HOD_noRSD.pyl.resume.%i_%i.%%j.err' % (workdir, i0, i1),
         '#SBATCH -p %s' % queue,
         '#SBATCH -N %i' % nodes,
+        '#SBATCH -n %i' % (nodes * 128),
         '#SBATCH --time=%s:%s:00' % (str(hr).zfill(2), str(mn).zfill(2)),
         '#SBATCH -A AST25022',
         '',
@@ -214,12 +216,12 @@ if __name__ == '__main__':
         import pylauncher
         cmdfile     = sys.argv[2]
         pyl_workdir = sys.argv[3]
-        pylauncher.ClassicLauncher(cmdfile, workdir=pyl_workdir, debug='job', delay=0.01, cores=32)
+        pylauncher.ClassicLauncher(cmdfile, workdir=pyl_workdir, debug='job', delay=0.01, cores=9)
 
     elif subcmd == 'resume-run':
         import pylauncher
         queuestate = sys.argv[2]
-        pylauncher.ResumeClassicLauncher(queuestate, debug='job', delay=0.01, cores=32)
+        pylauncher.ResumeClassicLauncher(queuestate, debug='job', delay=0.01, cores=9)
 
     elif subcmd == 'resume':
         import argparse
@@ -228,8 +230,8 @@ if __name__ == '__main__':
         p.add_argument('i0', type=int)
         p.add_argument('i1', type=int)
         p.add_argument('--jobid', type=str,   required=True)
-        p.add_argument('--nodes', type=int,   default=8)
-        p.add_argument('--time',  type=float, default=2.0)
+        p.add_argument('--nodes', type=int,   default=9)
+        p.add_argument('--time',  type=float, default=3.0)
         p.add_argument('--queue', type=str,   default='normal')
         args = p.parse_args()
         resume_HOD_fiducial_noRSD_pylauncher(
@@ -240,8 +242,8 @@ if __name__ == '__main__':
         p = argparse.ArgumentParser()
         p.add_argument('i0',          type=int)
         p.add_argument('i1',          type=int)
-        p.add_argument('--nodes',     type=int,   default=8)
-        p.add_argument('--time',      type=float, default=4.0)
+        p.add_argument('--nodes',     type=int,   default=9)
+        p.add_argument('--time',      type=float, default=3.0)
         p.add_argument('--queue',     type=str,   default='normal')
         p.add_argument('--skip-done', action='store_true')
         args = p.parse_args()
