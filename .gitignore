@@ -220,3 +220,28 @@ quij.hod*
 *.bak
 *.bakbak
 bin/npe/*.hdf5
+
+# SBI outputs
+qphi.*
+qphi_hod2nlb.*
+sbi-logs
+*.db
+
+# npe outputs and figures
+bin/npe/outputs/
+bin/npe/figures/
+bin/npe/data/
+bin/npe/archived_tests/
+*.png
+# TACC job logs and scratch
+o/
+slurm-*.out
+*.err
+*.out
+*.skipped.txt
+*_bad_idx_*.txt
+queuestate
+test_pyS/
+
+# compiled external code
+src/hodalpt/sims/2LPTic
