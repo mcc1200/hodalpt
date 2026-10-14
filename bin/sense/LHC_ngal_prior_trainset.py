@@ -8,7 +8,7 @@ from hodalpt.sims import quijote as Q
 LHC_DIR = '/corral/utexas/AST25023/simbig/quijote/latinhypercube_hr' # TACC
 
 
-paths = sorted(glob(os.path.join(LHC_DIR, '*')), key=lambda p: int(os.path.basename(p)))
+paths = sorted([p for p in glob(os.path.join(LHC_DIR, '[0-9]*')) if int(os.path.basename(p)) < 400], key=lambda p: int(os.path.basename(p)))
 LHC_idx = [int(os.path.basename(p)) for p in paths]
 
 FID_HOD = {
