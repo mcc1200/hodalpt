@@ -3,7 +3,7 @@ import os
 import numpy as np 
 
 ff = open('transfer_manifest.txt', 'w')
-for i in range(100, 200):
+for i in range(400, 500):
     ff.write('Snapshots/latin_hypercube_HR/%i/CAMB.params %i/CAMB.params\n' % (i, i))
     ff.write('Snapshots/latin_hypercube_HR/%i/Cosmo_params.dat %i/Cosmo_params.dat\n' % (i, i))
 
@@ -22,7 +22,7 @@ for i in range(100, 200):
     
     # rockstar halo catalogs
     #ff.write('Halos/Rockstar/latin_hypercube_HR//%i/out_4_pid.list %i/Rockstar/out_4_pid.list\n' % (i, i))
-    ff.write('Halos/Rockstar/latin_hypercube_HR//%i/out_3_pid.list %i/Rockstar/out_3_pid.list\n' % (i, i))
+    ff.write('Halos/Rockstar/latin_hypercube_HR/%i/out_3_pid.list %i/Rockstar/out_3_pid.list\n' % (i, i))
     #ff.write('Halos/Rockstar/latin_hypercube_HR//%i/out_2_pid.list %i/Rockstar/out_2_pid.list\n' % (i, i))
     #ff.write('Halos/Rockstar/latin_hypercube_HR//%i/out_1_pid.list %i/Rockstar/out_1_pid.list\n' % (i, i))
     #ff.write('Halos/Rockstar/latin_hypercube_HR//%i/out_0_pid.list %i/Rockstar/out_0_pid.list\n' % (i, i))

@@ -41,7 +41,7 @@ DM_DIR    = os.environ.get('HODALPT_DM_DIR', DM_DIR)
 
 study_dir = os.path.join(NPE_DIR, 'studies', study_name)
 TRIAL     = 36   # best optuna trial for this study (hardcoded; no .db needed)
-HOD_FILE  = os.path.join(NPE_DIR, 'data', 'bias_fid_HOD_noRSD_data_multivar05.hdf5')
+HOD_FILE  = os.path.join(NPE_DIR, 'data', 'bias_fid_HOD_noRSD_data.hdf5')
 # CMASS_FIL = os.path.join(NPE_DIR, 'data', 'CMASS_fid_HOD_noRSD.h5')
 CIC_BoxSize = 1000.
 CIC_Nmesh   = 40
@@ -276,9 +276,9 @@ def make_figure(sels, ppc, out_path, kmax_train=0.4):
 # ══════════════════════════════════════════════════════════════════════════════
 N_BISPEC   = 50          # draws per HOD
 BK_SEED    = 1           # pick_test_hods seed (must match between launch and plot)
-BK_NODES   = 1
-BK_TIME    = 2.0         # hours
-BK_QUEUE   = 'development'
+BK_NODES   = 2
+BK_TIME    = 2         # hours
+BK_QUEUE   = 'normal'
 BK_ACCOUNT = 'AST25023'
 PYL_CORES  = 9           # cores per task -> 128 // 9 = 14 concurrent draws per node
 SKIP_DONE  = True        # skip draws whose output file already exists
@@ -512,7 +512,7 @@ def run_ppc_small():
     make_figure(sels, ppc, prefix + '.png')
 
 
-MODE = 'ppc'    # 'ppc' (small local P0/pdf check) | 'bk_launch' (submit) | 'bk_plot'
+MODE = 'bk_launch'    # 'ppc' (small local P0/pdf check) | 'bk_launch' (submit) | 'bk_plot'
 
 if __name__ == '__main__':
     # internal subcommands, invoked by the SLURM script / pylauncher, not by hand

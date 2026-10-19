@@ -12,5 +12,5 @@ globus session consent 'urn:globus:auth:scope:transfer.api.globus.org:all[*https
 globus transfer $QUIJOTE_ENDPOINT:/ \
                 $LONESTAR_ENDPOINT:/corral/utexas/AST25023/simbig/quijote/latinhypercube_hr \
                 --batch transfer_manifest.txt \
-                --label "quijote initial conditions" \
+                --label "quijote initial conditions + rockstar halos" \
                 --sync-level mtime
