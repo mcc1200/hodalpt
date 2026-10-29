@@ -99,11 +99,11 @@ p['dm_dir'].mkdir(exist_ok=True)
 p['outdir_NLB'].mkdir(exist_ok=True)
 
 # define paths
-ic_path     = p['ic_path']
-dm_dir      = p['dm_dir'] 
-cosmofn     = p['cosmofn']
-outdir_NLB  = p['outdir_NLB']
-fname_NLB   = p['fname_NLB']
+ic_path     = str(p['ic_path'])  # hodalpt.sims.alpt does string ops (.split) on these, so not Path
+dm_dir      = str(p['dm_dir'])
+cosmofn     = str(p['cosmofn'])
+outdir_NLB  = str(p['outdir_NLB'])
+fname_NLB   = str(p['fname_NLB'])
 
 with open(theta_fn) as f:
     thetas = json.load(f)
