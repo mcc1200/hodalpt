@@ -7,12 +7,21 @@ import os
 from functools import lru_cache
 import numpy as np
 import os
+from scipy.special import erf, erfinv
+from pathlib import Path
+import torch
+import sbi
+
 # best-fit nmean (fit to fiducial HOD)
 nmean_bf = np.array([[9.8537e-05, 4.2518e-05, 3.3140e-06],
                      [5.7186e-05, 1.5255e-04, 3.7179e-05],
                      [3.7550e-06, 1.6143e-05, 1.3051e-05]])
 
-
+def cdf_transform(x, bounds):
+    """standard-normal x (..., D) -> uniform on [lo, hi]; bounds shape (2, D)"""
+    lo, hi = bounds
+    assert lo.shape == hi.shape == x.shape[-1:], (bounds.shape, x.shape)
+    return lo + 0.5 * (1 + erf(x / np.sqrt(2))) * (hi - lo)
 
 def sample_bias(seed, model='nonlocal2'):
     ''' sample comsic web classification bias model based on best-fit to
@@ -223,7 +232,7 @@ def sample_HOD(seed):
 def sample_HOD_realspace(seed): 
     ''' sample HOD parameters from Gaussian priors set around SIMBIG CMASS
     constraints, real space 
-    modification: multivariate gaussian prior from CMASS bispectrum npe posteriors, widened 50%
+    modification: multivariate gaussian prior from CMASS bispectrum npe posteriors, widened 5%
     '''
 
     rng = np.random.default_rng(seed)
@@ -251,3 +260,72 @@ def sample_HOD_realspace(seed):
         'eta_sat': 1.0
         }
     return hod
+
+def sample_HOD_realspace_array(seed=None, size=None, widen=1.05):
+    ''' Draw HOD params from a multivariate Gaussian fit to the SimBIG CMASS
+    bispectrum NPE posterior, stds widened by `widen`. Returns array of shape
+    (6,) if size is None, else (size, 6), columns ordered as HOD_KEYS. O
+
+    output of this form is required for sampling theta'_NLB from the emulator
+
+    HOD_KEYS = ('logMmin', 'sigma_logM', 'logM0', 'logM1', 'alpha', 'Abias')
+    HOD_FIXED_REALSPACE = {'eta_conc': 1.0, 'eta_cen': 0.0, 'eta_sat': 1.0}
+
+    `seed` may be an int, SeedSequence, or np.random.Generator.
+    '''
+    rng = np.random.default_rng(seed)
+
+    CHAIN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sims", "dat", "mc.simbig.cmass.b0k_kmax0p5.npy")
+    chain_allpars = np.load(CHAIN_FILE)
+    chain = chain_allpars[:, 5:11]
+
+    mu = np.mean(chain, axis=0)
+    cov = np.cov(chain.T)
+    cov_puffy = widen**2 * cov
+    
+    t = rng.multivariate_normal(mu, cov_puffy, size=size)
+    t[..., 1] = np.maximum(t[..., 1], 1e-3)   # sigma_logM clip to positive
+    t[..., 4] = np.maximum(t[..., 4], 1e-3)   # ditto for alpha
+    return t
+
+def pip_NLB(seed, size_hod_arr, n_nlb_samp=1):
+    """ Physically informed prior on nonlocal bias:
+        theta_hod ~ p(theta_hod),  theta'_nlb ~ q_phi(theta_nlb | theta_hod)
+
+    Returns
+    -------
+    theta_hod : (size_hod_arr, 6), columns HOD_KEYS
+    theta_nlb : (n_nlb_samp, size_hod_arr, 80); theta_nlb[s, i] is conditioned
+                on theta_hod[i]
+    """
+    ss_hod, ss_nlb = np.random.SeedSequence(seed).spawn(2)
+    
+    NPE_DIR   = Path('/work/11053/mcasas/ls6/hodalpt/bin/npe/studies/' # TACC
+    #NPE_DIR    = Path('/Users/mcc3842/CosmicSim2025/hodalpt/bin/npe/studies/'
+                 'qphi_hod2nlb.exp20.maf.pdf+p0+q123.0.4.emb.noRSD.n45.d100.emb')
+    NPE_TAG   = NPE_DIR.name
+    qphi_path = NPE_DIR / f'{NPE_TAG}.36.pt'
+    norm_path = NPE_DIR / f'{NPE_TAG}.hod_norm.npz'
+
+    qphi = torch.load(qphi_path, weights_only=False)
+    norm = np.load(norm_path)
+
+    bounds, aidx = norm['bounds_keep'], norm['active_idx']
+    hod_mean, hod_std = norm['hod_mean'], norm['hod_std']
+
+    theta_hod = sample_HOD_realspace_array(ss_hod, size_hod_arr)
+    x_t = (theta_hod - hod_mean) / (hod_std + 1e-8)
+
+    x = torch.tensor(x_t, dtype=torch.float32)
+    with torch.random.fork_rng():
+        torch.manual_seed(int(ss_nlb.generate_state(1)[0]))
+        y = qphi.sample_batched((n_nlb_samp,), x=x, show_progress_bars=False).cpu().numpy()
+    assert y.shape == (n_nlb_samp, size_hod_arr, len(aidx)), y.shape
+
+    theta_nlb = np.zeros((n_nlb_samp, size_hod_arr, 80))
+    theta_nlb[..., aidx] = cdf_transform(y, bounds)
+
+
+    return theta_hod, theta_nlb
+
+
