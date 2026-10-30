@@ -117,15 +117,14 @@ theta_gal = load_thetas(i_LHC)
 
 # run the DM field computation
 print('ALPT running for LHC%i' % i_LHC) 
-if not os.path.isfile(os.path.join(dm_dir, 'Quijote_ICs_delta_z127_n256_CIC.DAT')): 
-    CS.CSbox_alpt_Q(ic_path, dm_dir, seed=seed, dgrowth_short=5., make_ics=True,
-            subgrid=True, return_pos=False, silent=True)
-else: 
+CS.CSbox_alpt_Q(ic_path, dm_dir, seed=seed, dgrowth_short=5., make_ics=False,
+        subgrid=True, return_pos=False, silent=True)
+# if not os.path.isfile(os.path.join(dm_dir, 'Quijote_ICs_delta_z127_n256_CIC.DAT')): 
+#     CS.CSbox_alpt_Q(ic_path, dm_dir, seed=seed, dgrowth_short=5., make_ics=True,
+#             subgrid=True, return_pos=False, silent=True)
+# else: 
     # run subgrid on 
-    CS.CSbox_alpt_Q(ic_path, dm_dir, seed=seed, dgrowth_short=5., make_ics=False,
-            subgrid=True, return_pos=False, silent=True)
-
-
+    
 # for bias computation
 cosmo = np.loadtxt(cosmofn) # om, ob, h, ns, s8
 xyz_nlb = CS.CSbox_galaxy(theta_gal, None, dm_dir, bias_model='nonlocal2', 
