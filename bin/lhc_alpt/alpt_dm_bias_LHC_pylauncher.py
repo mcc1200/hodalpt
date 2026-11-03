@@ -1,8 +1,8 @@
 '''
 alpt_dm_bias_LHC_pylauncher.py
 
-Parallelizes alpt_dm_bias_LHC.py (ALPT DM field + real-space bias sampling +
-P(k), CIC PDF, B(k)) over the Quijote LHC realizations in theta_NLB_PIP.json
+Parallelizes alpt_dm_bias_LHC.py (CAMB + 2LPTic ICs, ALPT DM field, real-space
+bias sampling, P(k), CIC PDF, B(k)) over the Quijote LHC realizations in theta_NLB_PIP.json
 across TACC nodes using pylauncher. Each commandline invokes
 alpt_dm_bias_LHC.py for a single i_LHC; pylauncher saturates all cores.
 
@@ -13,8 +13,8 @@ have a theta_NLB entry.
 
     output: latinhypercube_hr/<i_LHC>/bias/spec.noRSD.<i_LHC>.h5
 
-Memory: each task runs the ALPT DM step (reads the ICs) and then the bias +
-FFTPower + B(k), so peak memory is higher than the fiducial bias-only pipeline.
+Memory: each task generates its own ICs (2LPTic, Nmesh=512), runs ALPT, and then
+the bias + FFTPower + B(k), so peak memory is higher than the fiducial bias-only pipeline.
 pylauncher gives each task --cores-per-task cores, so tasks/node =
 128 // cores-per-task and memory/task ~ (node mem) / (tasks/node). Default 12
 (10 tasks/node, ~1/10 of node memory each); calibrate with seff / MaxRSS from
@@ -143,7 +143,9 @@ def run_alpt_dm_bias_LHC_pylauncher(i0, i1, nodes=9, time=4, queue='normal',
     cmdfile = os.path.join(scratch, 'alpt_dm_bias_LHC_cmds_%i_%i.txt' % (i0, i1))
     with open(cmdfile, 'w') as f:
         for i in indices:
-            f.write('python %s/alpt_dm_bias_LHC.py %i > %s/lhc_%i.log 2>&1\n'
+            # _pending() already filtered out finished spectra, so tell the script to
+            # overwrite (it skips on any existing file, even a truncated one)
+            f.write('python %s/alpt_dm_bias_LHC.py %i --overwrite > %s/lhc_%i.log 2>&1\n'
                     % (SCRIPTDIR, i, logdir, i))
     print('wrote %i commandlines to %s' % (len(indices), cmdfile))
 

@@ -1,24 +1,19 @@
 import os, sys
-import glob
 import numpy as np
 from pathlib import Path
 from hodalpt import stats
-from hodalpt.sims import quijote as Q
 from hodalpt.sims import alpt as CS
 import json, h5py
 from nbodykit.lab import ArrayCatalog, FFTPower
-import time
-import pyfftw
 
-i_LHC = int(sys.argv[1]) # LHC realization
-overwrite = True
-seed = 20261029
 
 LHC_ROOT  = Path('/corral/utexas/AST25023/simbig/quijote/latinhypercube_hr')
 SCRIPTDIR = Path(__file__).resolve().parent
 NLB_KEYS = ('alpha', 'beta', 'nmean', 'rhoeps', 'eps')
 
-theta_fn  = SCRIPTDIR / 'theta_NLB_PIP.json'
+SEED = 20261029  # IC seed base; realization i_LHC uses SEED + i_LHC
+NGRID, LBOX, ZSNAP = 256, 1000., 0.5
+
 
 def save_spectrum(fname, xyz, theta, cosmo):
     """Save FFTPower multipoles to HDF5."""
@@ -79,7 +74,6 @@ def lhc_paths(i_LHC, root=LHC_ROOT):
     """All per-realization paths for a given LHC index."""
     d = root / str(i_LHC)
     return dict(
-        ic_path    = d / 'ICs',
         dm_dir     = d / 'alpt',
         cosmofn    = d / 'Cosmo_params.dat',
         outdir_NLB = d / 'bias',
@@ -89,48 +83,60 @@ def lhc_paths(i_LHC, root=LHC_ROOT):
 def nlb_to_vec(theta_gal):
     return np.concatenate([theta_gal[k].ravel() for k in NLB_KEYS])
 
-p = lhc_paths(i_LHC)
 
-if p['fname_NLB'].exists() and overwrite==False:
-    print(f'{p["fname_NLB"]} exists, skipping'); raise SystemExit
-for k in ('ic_path', 'cosmofn'):
-    assert p[k].exists(), f'missing {k}: {p[k]}'
-p['dm_dir'].mkdir(exist_ok=True)
-p['outdir_NLB'].mkdir(exist_ok=True)
-
-# define paths
-ic_path     = str(p['ic_path'])  # hodalpt.sims.alpt does string ops (.split) on these, so not Path
-dm_dir      = str(p['dm_dir'])
-cosmofn     = str(p['cosmofn'])
-outdir_NLB  = str(p['outdir_NLB'])
-fname_NLB   = str(p['fname_NLB'])
-
-with open(theta_fn) as f:
-    thetas = json.load(f)
-
-def load_thetas(i_LHC):
+def load_thetas(i_LHC, thetas):
     t = thetas[str(i_LHC)]
     theta_gal = {k: np.array(v) for k, v in t['theta_NLB'].items()}  # (4,4) arrays
     return theta_gal
 
-theta_gal = load_thetas(i_LHC)
 
-# run the DM field computation
-print('ALPT running for LHC%i' % i_LHC) 
-CS.CSbox_alpt_Q(ic_path, dm_dir, seed=seed, dgrowth_short=5., make_ics=False,
-        subgrid=True, return_pos=False, silent=True)
-# if not os.path.isfile(os.path.join(dm_dir, 'Quijote_ICs_delta_z127_n256_CIC.DAT')): 
-#     CS.CSbox_alpt_Q(ic_path, dm_dir, seed=seed, dgrowth_short=5., make_ics=True,
-#             subgrid=True, return_pos=False, silent=True)
-# else: 
-    # run subgrid on 
-    
-# for bias computation
-cosmo = np.loadtxt(cosmofn) # om, ob, h, ns, s8
-xyz_nlb = CS.CSbox_galaxy(theta_gal, None, dm_dir, bias_model='nonlocal2', 
-                    subgrid=True, silent=True, rsd=False)
-
-save_spectrum(fname_NLB, xyz_nlb, nlb_to_vec(theta_gal), cosmo)
+def run_alpt_dm(i_LHC, cosmo_dict, dm_dir):
+    """Generate ICs from cosmo_dict and run ALPT, writing the DM fields to dm_dir."""
+    print('ALPT running for LHC%i' % i_LHC, flush=True)
+    CS.CSbox_alpt(cosmo_dict, dm_dir, seed=SEED + i_LHC, dgrowth_short=5.,
+                  ngrid=NGRID, lbox=LBOX, zsnap=ZSNAP, lambdath_tweb=0.,
+                  lambdath_twebdelta=0., Nmesh_ic=512, Nsample_ic=256,
+                  subgrid=True, return_pos=False, silent=True)
 
 
+def run_bias(i_LHC, theta_gal, cosmo, dm_dir, fname_NLB):
+    print('NLB running for LHC%i' % i_LHC, flush=True)
+    # CSbox_galaxy builds the velocity filenames with `dm_dir + 'VEx...'`, so dm_dir needs a trailing slash
+    xyz_nlb = CS.CSbox_galaxy(theta_gal, None, os.path.join(dm_dir, ''), Ngrid=NGRID,
+                              Lbox=LBOX, zsnap=ZSNAP, bias_model='nonlocal2',
+                              subgrid=True, silent=True, rsd=False)
+    save_spectrum(fname_NLB, xyz_nlb, nlb_to_vec(theta_gal), cosmo)
 
+
+if __name__ == '__main__':
+    i_LHC = int(sys.argv[1]) # LHC realization
+    overwrite = '--overwrite' in sys.argv[2:]
+    # --dm / --bias select a stage; with neither, run both
+    do_dm   = '--dm' in sys.argv[2:] or '--bias' not in sys.argv[2:]
+    do_bias = '--bias' in sys.argv[2:] or '--dm' not in sys.argv[2:]
+
+    p = lhc_paths(i_LHC)
+    # hodalpt.sims.alpt does string ops on these, so pass str, not Path
+    dm_dir     = str(p['dm_dir'])
+    fname_NLB  = str(p['fname_NLB'])
+
+    if do_bias and p['fname_NLB'].exists() and not overwrite:
+        print(f'{fname_NLB} exists, skipping'); raise SystemExit
+    assert p['cosmofn'].exists(), f'missing cosmofn: {p["cosmofn"]}'
+
+    # load everything before the expensive DM step so a bad input fails fast
+    cosmo = np.loadtxt(p['cosmofn']) # om, ob, h, ns, s8
+    cosmo_labels = ['Omega_m', 'Omega_b', 'h', 'n_s', 'sigma_8']
+    cosmo_dict = {k: float(v) for k, v in zip(cosmo_labels, cosmo)}
+
+    with open(SCRIPTDIR / 'theta_NLB_PIP.json') as f:
+        thetas = json.load(f)
+    theta_gal = load_thetas(i_LHC, thetas)
+
+    p['dm_dir'].mkdir(exist_ok=True)
+    p['outdir_NLB'].mkdir(exist_ok=True)
+
+    if do_dm:
+        run_alpt_dm(i_LHC, cosmo_dict, dm_dir)
+    if do_bias:
+        run_bias(i_LHC, theta_gal, cosmo, dm_dir, fname_NLB)
