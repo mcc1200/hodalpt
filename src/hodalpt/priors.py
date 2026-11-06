@@ -299,13 +299,12 @@ def pip_NLB(seed, size_hod_arr, n_nlb_samp=1):
                 on theta_hod[i]
     """
     ss_hod, ss_nlb = np.random.SeedSequence(seed).spawn(2)
-    
-    NPE_DIR   = Path('/work/11053/mcasas/ls6/hodalpt/bin/npe/studies/' # TACC
-    #NPE_DIR    = Path('/Users/mcc3842/CosmicSim2025/hodalpt/bin/npe/studies/'
-                 'qphi_hod2nlb.exp20.maf.pdf+p0+q123.0.4.emb.noRSD.n45.d100.emb')
-    NPE_TAG   = NPE_DIR.name
-    qphi_path = NPE_DIR / f'{NPE_TAG}.36.pt'
-    norm_path = NPE_DIR / f'{NPE_TAG}.hod_norm.npz'
+
+    # load emulator flow
+    dat_dir = Path(__file__).resolve().parent / "sims" / "dat"
+    stem = "qphi_hod2nlb.exp20.maf.pdf+p0+q123.0.4.emb.noRSD.n45.d100.emb"
+    qphi_path = dat_dir / f"{stem}.36.pt"
+    norm_path = dat_dir / f"{stem}.hod_norm.npz"
 
     qphi = torch.load(qphi_path, weights_only=False)
     norm = np.load(norm_path)
