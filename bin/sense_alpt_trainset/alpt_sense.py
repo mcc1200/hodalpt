@@ -69,6 +69,20 @@ def alpt_missing(idx_cosmo, root=SENSE_ROOT):
 def alpt_complete(idx_cosmo, root=SENSE_ROOT):
     return not alpt_missing(idx_cosmo, root)
 
+SPEC_KEYS = ['theta', 'cosmo', 'ngs', 'k', 'p0', 'nmodes', 'shotnoise',
+             'cic_pdf', 'cic_pdf_edges', 'i_k1', 'i_k2', 'i_k3', 'b123', 'q123']
+
+def bias_complete(idx_cosmo, root=SENSE_ROOT):
+    """True if the spectrum file is an openable h5 with every key save_spectrum() writes."""
+    f = alpt_sense_paths(idx_cosmo, root)['fname_NLB']
+    if not f.is_file():
+        return False
+    try:
+        with h5py.File(f, 'r') as h:
+            return all(k in h for k in SPEC_KEYS)
+    except OSError:  # truncated / still being written
+        return False
+
 def n_cosmo():
     """Number of cosmologies in cosmo_samples.npy."""
     return np.load(COSMOFN, mmap_mode='r').shape[0]
@@ -173,7 +187,7 @@ if __name__ == '__main__':
     dm_dir     = str(p['dm_dir'])
     fname_NLB  = str(p['fname_NLB'])
 
-    if do_bias and p['fname_NLB'].exists() and not overwrite:
+    if do_bias and bias_complete(idx_cosmo) and not overwrite:
         print(f'{fname_NLB} exists, skipping'); raise SystemExit
 
     # get PIP NLB
