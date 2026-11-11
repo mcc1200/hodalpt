@@ -149,6 +149,21 @@ def run_alpt_dm(idx_cosmo, cosmo_dict, dm_dir):
                   lambdath_twebdelta=0., Nmesh_ic=512, Nsample_ic=256,
                   subgrid=True, return_pos=False, silent=True)
 
+# small provenance files left in alpt/ after pruning
+KEEP_AFTER_PRUNE = ('2LPT.param', 'input.par', 'cosmology.par', 'z_input.par')
+
+def prune_dm(dm_dir):
+    """Delete every file in dm_dir except KEEP_AFTER_PRUNE; returns bytes freed.
+
+    Only call once the spectrum for this index is verified (bias_complete): the
+    DM fields are ~2.8 GB per cosmology and are not needed once spec.*.h5 exists."""
+    freed = 0
+    for f in os.scandir(dm_dir):
+        if f.is_file() and f.name not in KEEP_AFTER_PRUNE:
+            freed += f.stat().st_size
+            os.remove(f.path)
+    return freed
+
 def run_bias(idx_cosmo, theta_gal, cosmo, dm_dir, fname_NLB):
     print('NLB running for cosmo %i' % idx_cosmo, flush=True)
     # CSbox_galaxy builds the velocity filenames with `dm_dir + 'VEx...'`, so dm_dir needs a trailing slash
@@ -209,5 +224,11 @@ if __name__ == '__main__':
 
     if do_bias:
         run_bias(idx_cosmo, theta_gal, cosmo_vals, dm_dir, fname_NLB)
+        # prune only after the spectrum is re-opened and verified; --keep-dm opts out
+        if '--keep-dm' not in sys.argv[2:]:
+            if not bias_complete(idx_cosmo):
+                print(f'spectrum for cosmology {idx_cosmo} failed verification, keeping DM files', flush=True)
+                sys.exit(1)
+            print(f'pruned DM files for cosmology {idx_cosmo}: {prune_dm(dm_dir)/1e9:.2f} GB freed', flush=True)
 
     print('ALPT done for cosmology %i' % idx_cosmo)
