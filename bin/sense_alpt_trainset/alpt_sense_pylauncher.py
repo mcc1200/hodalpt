@@ -115,10 +115,12 @@ def check_alpt_sense(idx_batch):
     '''Print ALPT status counts for idx_batch.'''
     done, bias_todo, partial, todo = [], [], [], []
     for i in idx_batch:
-        bad = alpt_missing(i)
-        if not bad and bias_complete(i):
+        # a verified spectrum means done, whether or not the DM files were pruned afterwards
+        if bias_complete(i):
             done.append(i)
-        elif not bad:
+            continue
+        bad = alpt_missing(i)
+        if not bad:
             bias_todo.append(i)
         elif len(bad) < len(DM_FILES):  # some outputs written, some not
             partial.append(i)
