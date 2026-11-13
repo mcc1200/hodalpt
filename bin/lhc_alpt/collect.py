@@ -1,11 +1,12 @@
 '''
-Collect the LHC real-space (noRSD) bias spectra into one training dataset.
+Collect the LHC real-space (noRSD) HOD galaxy spectra into one dataset.
 
 Usage:
     python collect.py
 
-Reads <LHC_base>/<i_LHC>/bias/spec.noRSD.<i_LHC>.h5 for every LHC index that
-has one (indices are not sequential) and writes lhc_alpt_noRSD_data.hdf5 next
+Reads <LHC_base>/<i_LHC>/bias/HOD/spec.noRSD.<i_LHC>.h5 (written by
+rockstar_hod_LHC.py) for every LHC index that
+has one (indices are not sequential) and writes bias_LHC_HOD_data.hdf5 next
 to this script. Rows are self-consistent: a file that fails to read is dropped
 entirely, so theta / p0 / b123 / cic_pdf / idx always line up row-for-row.
 Row order follows ascending 'idx'.
@@ -19,7 +20,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 LHC_base = '/corral/utexas/AST25023/simbig/quijote/latinhypercube_hr'
 out_dir  = os.path.dirname(os.path.abspath(__file__))
-out_fn   = f'{out_dir}/lhc_alpt_noRSD_data.hdf5'
+out_fn   = f'{out_dir}/bias_LHC_HOD_data.hdf5'
 
 kmax        = 1.0
 kmin_bispec = 0.0
@@ -62,8 +63,8 @@ def _load(args):
             cosmo, nmodes[mask], shotnoise)
 
 
-def collect_lhc(out_fn, label='lhc_alpt_noRSD'):
-    files = sorted(glob.glob(f'{LHC_base}/*/bias/spec.noRSD.*.h5'), key=_lhc_idx)
+def collect_lhc(out_fn, label='bias_LHC_HOD'):
+    files = sorted(glob.glob(f'{LHC_base}/*/bias/HOD/spec.noRSD.*.h5'), key=_lhc_idx)
     idx = [_lhc_idx(fn) for fn in files]
     n = len(files)
     print(f'[{label}] Found {n} spectra in {LHC_base}')
